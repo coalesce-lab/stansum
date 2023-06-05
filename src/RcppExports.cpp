@@ -12,10 +12,32 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 
+RcppExport SEXP _rcpp_module_boot_stan_fit4CovMod_count_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4CovMod_dichotomous_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4MaltielBEM_count_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4MaltielBEM_dichotomous_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4MaltielBEM_trichotomous_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4MaltielRDM_count_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4MaltielRDM_dichotomous_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ZhengBEM_count_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ZhengBEM_dichotomous_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ZhengBEM_trichotomous_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ZhengGP_count_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ZhengGP_dichotomous_mod();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_rcpp_module_boot_stan_fit4CovMod_count_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4CovMod_count_mod, 0},
+    {"_rcpp_module_boot_stan_fit4CovMod_dichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4CovMod_dichotomous_mod, 0},
+    {"_rcpp_module_boot_stan_fit4MaltielBEM_count_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4MaltielBEM_count_mod, 0},
+    {"_rcpp_module_boot_stan_fit4MaltielBEM_dichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4MaltielBEM_dichotomous_mod, 0},
+    {"_rcpp_module_boot_stan_fit4MaltielBEM_trichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4MaltielBEM_trichotomous_mod, 0},
+    {"_rcpp_module_boot_stan_fit4MaltielRDM_count_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4MaltielRDM_count_mod, 0},
+    {"_rcpp_module_boot_stan_fit4MaltielRDM_dichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4MaltielRDM_dichotomous_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ZhengBEM_count_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ZhengBEM_count_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ZhengBEM_dichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ZhengBEM_dichotomous_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ZhengBEM_trichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ZhengBEM_trichotomous_mod, 0},
     {"_rcpp_module_boot_stan_fit4ZhengGP_count_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ZhengGP_count_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ZhengGP_dichotomous_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ZhengGP_dichotomous_mod, 0},
     {NULL, NULL, 0}
 };
 
