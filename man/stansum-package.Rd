@@ -4,10 +4,13 @@
 \name{stansum-package}
 \alias{stansum-package}
 \alias{stansum}
-\title{The 'stansum' package.}
+\title{Bayesian Models for Degree Estimation from Aggregated Relational Data}
 \description{
-A DESCRIPTION OF THE PACKAGE
+Interface to various precompiled Stan models for Aggregated
+Relational Data that estiamte, among other things, network degrees and
+other things.
 }
 \references{
-Stan Development Team (2023). RStan: the R interface to Stan. R package version 2.21.8. https://mc-stan.org
+Stan Development Team (2023). RStan: the R interface to Stan. R package
+version 2.21.8. https://mc-stan.org
 }

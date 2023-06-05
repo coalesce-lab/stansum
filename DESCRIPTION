@@ -7,7 +7,9 @@ Authors@R:
            comment = c(ORCID = "0000-0001-7503-852X")),
       person("Derick", "Baum", role = "aut")
     )
-Description: What the package does (one paragraph).
+Description: Interface to various precompiled Stan models for Aggregated 
+  Relational Data that estiamte, among other things, network degrees
+  and other things.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
