@@ -1,9 +1,12 @@
 Package: stansum
-Title: What the Package Does (One Line, Title Case)
+Title: Bayesian Models for Degree Estimation from Aggregated Relational Data
 Version: 0.1-0
 Authors@R: 
-    person("Michal", "Bojanowski", , "michal2992@gmail.com", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0001-7503-852X"))
+    c(
+      person("Michal", "Bojanowski", , "michal2992@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7503-852X")),
+      person("Derick", "Baum", role = "aut")
+    )
 Description: What the package does (one paragraph).
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
