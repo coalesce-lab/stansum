@@ -16,5 +16,7 @@ You can install the development version of stansum from [GitHub](https://github.
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("mbojan/stansum")
+remotes::install_github("coalesce-lab/stansum")
 ```
+
+or soon from <https://coalesce-lab.r-universe.dev/builds>.
