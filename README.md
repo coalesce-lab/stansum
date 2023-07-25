@@ -1,6 +1,7 @@
 # Bayesian Models for Degree Estimation from Aggregated Relational Data
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/coalesce-lab/stansum/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/coalesce-lab/stansum/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 R package wraping Bayesian models for Aggregated Relational Data (ARD) relevant for the Network Scale-Up Method (NSUM) and degree estimation. The package includes
