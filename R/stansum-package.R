@@ -7,10 +7,6 @@
 #' @docType package
 #' @name stansum-package
 #' @aliases stansum
-#' @useDynLib stansum, .registration = TRUE
-#' @import methods
-#' @import Rcpp
-#' @importFrom rstan sampling
 #'
 #' @references
 #' Stan Development Team (2023). RStan: the R interface to Stan. R package
