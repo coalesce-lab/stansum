@@ -25,3 +25,4 @@ Suggests:
 Config/testthat/edition: 3
 Remotes:
     mbojan/instantiate@mb
+LazyData: true
