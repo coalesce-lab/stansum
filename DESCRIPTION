@@ -8,8 +8,7 @@ Authors@R:
       person("Derick S.", "Baum", role = "aut")
     )
 Description: Interface to various precompiled Stan models for Aggregated 
-  Relational Data that estiamte, among other things, network degrees
-  and other things.
+  Relational Data that estiamte, among other things, network degrees.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
