@@ -3,8 +3,8 @@ Title: Bayesian Models for Degree Estimation from Aggregated Relational Data
 Version: 0.1-0
 Authors@R: 
     c(
-      person("Michal", "Bojanowski", , "michal2992@gmail.com", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0001-7503-852X")),
+      person("Michal", "Bojanowski", , "michal2992@gmail.com", 
+        role = c("aut", "cre"), comment = c(ORCID = "0000-0001-7503-852X")),
       person("Derick S.", "Baum", role = "aut")
     )
 Description: Interface to various precompiled Stan models for Aggregated 
