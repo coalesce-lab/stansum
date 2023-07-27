@@ -2,15 +2,24 @@
 % Please edit documentation in R/stansum-package.R
 \docType{package}
 \name{stansum-package}
-\alias{stansum-package}
 \alias{stansum}
-\title{Bayesian Models for Degree Estimation from Aggregated Relational Data}
+\alias{stansum-package}
+\title{stansum: Bayesian Models for Degree Estimation from Aggregated Relational Data}
 \description{
-Interface to various precompiled Stan models for Aggregated
-Relational Data that estiamte, among other things, network degrees and
-other things.
+Interface to various precompiled Stan models for Aggregated Relational Data that estiamte, among other things, network degrees.
 }
-\references{
-Stan Development Team (2023). RStan: the R interface to Stan. R package
-version 2.21.8. https://mc-stan.org
+\author{
+\strong{Maintainer}: Michal Bojanowski \email{michal2992@gmail.com} (\href{https://orcid.org/0000-0001-7503-852X}{ORCID})
+
+Authors:
+\itemize{
+  \item Derick S. Baum
 }
+
+Other contributors:
+\itemize{
+  \item European Research Council (Supported MB through grant 101020038 (PI Miranda Lubbers) <http://patchwork-erc.eu/en>) [funder]
+}
+
+}
+\keyword{internal}
