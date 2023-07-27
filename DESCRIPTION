@@ -1,6 +1,6 @@
 Package: stansum
 Title: Bayesian Models for Degree Estimation from Aggregated Relational Data
-Version: 0.1-0
+Version: 1.0-0
 Authors@R: 
     c(
       person("Michal", "Bojanowski", , "michal2992@gmail.com", 
