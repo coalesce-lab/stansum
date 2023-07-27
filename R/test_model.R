@@ -31,5 +31,5 @@
 
 test_model <- {
   p <- system.file("stan", "bernoulli.stan", package = "stansum")
-  stan_package_model2(p)
+  instantiate::stan_package_model2(p)
 }
