@@ -26,6 +26,7 @@
 #' - `theta`: Probability
 #'
 #'
+#' @importFrom instantiate stan_package_model2
 #' @export
 
 test_model <- {
