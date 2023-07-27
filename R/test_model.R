@@ -26,10 +26,9 @@
 #' - `theta`: Probability
 #'
 #'
-#' @importFrom instantiate stan_package_model2
+#' @importFrom instantiate stan_package_model
 #' @export
 
 test_model <- {
-  p <- system.file("stan", "bernoulli.stan", package = "stansum")
-  instantiate::stan_package_model2(p)
+  instantiate::stan_package_model("bernoulli", package = "stansum")
 }
