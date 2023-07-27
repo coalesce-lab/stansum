@@ -5,7 +5,9 @@ Authors@R:
     c(
       person("Michal", "Bojanowski", , "michal2992@gmail.com", 
         role = c("aut", "cre"), comment = c(ORCID = "0000-0001-7503-852X")),
-      person("Derick S.", "Baum", role = "aut")
+      person("Derick S.", "Baum", role = "aut"),
+      person("European Research Council", role = "fnd", 
+        comment = "Supported MB through grant 101020038 (PI Miranda Lubbers) <http://patchwork-erc.eu/en>")
     )
 Description: Interface to various precompiled Stan models for Aggregated 
   Relational Data that estiamte, among other things, network degrees.
