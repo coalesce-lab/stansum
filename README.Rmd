@@ -23,6 +23,10 @@ knitr::opts_chunk$set(
 R package wraping Bayesian models for Aggregated Relational Data (ARD) relevant for the Network Scale-Up Method (NSUM) and degree estimation. The package includes models by
 @zheng_etal_2006, @maltiel_etal_2015, @baum_marsden_2023
 
+The package relies on **instantiate** [@r-instantiate] to embed Stan models in an R package.
+
+## Authors and contributors
+
 - Michał Bojanowski
 - Derick S. Baum
 

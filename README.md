@@ -13,6 +13,11 @@ relevant for the Network Scale-Up Method (NSUM) and degree estimation.
 The package includes models by Zheng, Salganik, and Gelman (2006),
 Maltiel et al. (2015), Baum and Marsden (2023)
 
+The package relies on **instantiate** (Landau 2023) to embed Stan models
+in an R package.
+
+## Authors and contributors
+
 - Michał Bojanowski
 - Derick S. Baum
 
@@ -47,6 +52,13 @@ grant 101020038 (PI Miranda Lubbers, COALESCE Lab, UAB)
 Baum, Derick S., and Peter V. Marsden. 2023. “Uses and Limitations of
 Dichotomous Aggregate Relational Data.” *Social Networks* 74 (July):
 42–61. <https://doi.org/10.1016/j.socnet.2023.02.001>.
+
+</div>
+
+<div id="ref-r-instantiate" class="csl-entry">
+
+Landau, William Michael. 2023. *Instantiate: Pre-Compiled CmdStan Models
+in r Packages*.
 
 </div>
 
