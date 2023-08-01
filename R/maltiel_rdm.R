@@ -15,7 +15,7 @@
 #'   of Applied Statistics*, 9(3), 1247–1277.
 #'   <https://doi.org/10.1214/15-AOAS827>
 #'
-#' @family Models of Maltiel et al (2015)
+#' @family models of Maltiel et al (2015)
 
 
 

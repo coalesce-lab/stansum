@@ -28,8 +28,8 @@ method.
 Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel} without fitting it.
 
-Other Models for ARD: 
+Other models in this package: 
 \code{\link{maltiel_bem}},
 \code{\link{maltiel_rdm}}
 }
-\concept{Models for ARD}
+\concept{models in this package}

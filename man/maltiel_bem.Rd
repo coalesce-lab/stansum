@@ -66,12 +66,12 @@ of Applied Statistics}, 9(3), 1247–1277.
 Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel} without fitting it.
 
-Other Models for ARD: 
+Other models in this package: 
 \code{\link{maltiel_rdm}},
 \code{\link{test_model}()}
 
-Other Models of Maltiel et al (2015): 
+Other models of Maltiel et al (2015): 
 \code{\link{maltiel_rdm}}
 }
-\concept{Models for ARD}
-\concept{Models of Maltiel et al (2015)}
+\concept{models in this package}
+\concept{models of Maltiel et al (2015)}

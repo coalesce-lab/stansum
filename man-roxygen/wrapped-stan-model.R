@@ -10,5 +10,5 @@
 #' @seealso Use [get_model()] to return Stan model object of class
 #'   [cmdstanr::CmdStanModel] without fitting it.
 #'
-#' @family Models for ARD
+#' @family models in this package
 #'
