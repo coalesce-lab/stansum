@@ -4,7 +4,7 @@
 \name{stansum-package}
 \alias{stansum}
 \alias{stansum-package}
-\title{stansum: Bayesian Models for Degree Estimation and Network Scale-Up Method from Aggregated Relational Data}
+\title{stansum: Bayesian Models for Aggregated Relational Data and Network Scale-Up Method}
 \description{
 Interface to various precompiled Stan models for Aggregated Relational Data that estimate, among other things, network degrees. Includes models by Zheng et al (2006) \doi{10.1198/016214505000001168}, Maltiel et al (2015) \doi{10.1214/15-AOAS827}, Baum & Marsden (2023) \doi{10.1016/j.socnet.2023.02.001}.
 }
@@ -22,6 +22,13 @@ Zheng, T., Salganik, M. J., & Gelman, A. (2006). How Many People Do You
 Know in Prison? Using Overdispersion in Count Data to Estimate Social
 Structure in Networks. Journal of the American Statistical Association,
 101(474), 409–423. \doi{10.1198/016214505000001168}
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://coalesce-lab.github.io/stansum/}
+}
+
 }
 \author{
 \strong{Maintainer}: Michal Bojanowski \email{michal2992@gmail.com} (\href{https://orcid.org/0000-0001-7503-852X}{ORCID})
