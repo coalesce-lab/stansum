@@ -2,6 +2,8 @@
 
 S3method(format_data,CmdStanModel)
 S3method(format_parameters,CmdStanModel)
+export(get_model)
+export(list_models)
 export(maltiel_bem_count)
 export(maltiel_bem_dichotomous)
 export(maltiel_bem_trichotomous)
