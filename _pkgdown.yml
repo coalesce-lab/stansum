@@ -1,4 +1,5 @@
 url: https://coalesce-lab.github.io/stansum/
 template:
   bootstrap: 5
-
+  bslib:
+    primary: "#1F2370"
