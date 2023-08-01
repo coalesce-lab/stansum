@@ -1,6 +1,5 @@
 Package: stansum
-Title: Bayesian Models for Degree Estimation and Network Scale-Up Method from 
-    Aggregated Relational Data
+Title: Bayesian Models for Aggregated Relational Data and Network Scale-Up Method
 Version: 1.0-0
 Authors@R: 
     c(
