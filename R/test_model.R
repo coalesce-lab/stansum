@@ -1,27 +1,15 @@
-#' Test model
+#' A simple Bernoulli model for testing purposes
 #'
-#' A test Bernoulli model from Stan documentation.
+#' A test Bernoulli model taken from Stan documentation.
 #'
-#' @format An object of R6 class `CmdStanModel`.
+#' @param N integer; number of trials
+#' @param y integer; vector of Bernoulli outcomes
 #'
-#' @section Data:
+#' @template wrapped-stan-model
 #'
-#' where
-#'
-#' - `N`: Number of trials
-#' - `y`: Vector of 0s and 1s
-#'
-#' @section Parameters:
-#'
-#'
-#' where
-#'
-#' - `theta`: Probability
-#'
-#'
-#' @importFrom instantiate stan_package_model
 #' @export
 
-test_model <- {
-  p <- system.file("stan", "bernoulli.stan", package = "stansum")
+test_model <- function(N, y, ...) {
+  mod <- get_model("bernoulli")
+  mod$sample(data = list(N=N, y=y), ...)
 }

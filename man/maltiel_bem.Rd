@@ -26,7 +26,13 @@ maltiel_bem_trichotomous(N, K, y, m, L, ...)
 
 \item{...}{other arguments passed to \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}}
 }
+\value{
+Object of class \link[cmdstanr:CmdStanMCMC]{cmdstanr::CmdStanMCMC} containing the samples.
+}
 \description{
+Bayesian model for ARD including parameters capturing barrier
+effects.
+
 \itemize{
 \item \code{maltiel_bem_count} -- model for count responses
 }
@@ -41,14 +47,33 @@ proposed by Baum & Marsden (2023).
 proposed by Baum & Marsden (2023).
 }
 }
+\details{
+Calling this function will load the model object using \code{\link[=get_model]{get_model()}}
+and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}} method.
+
+See Laga et al (2021) for a review of other models for Aggregated
+Relational Data (ARD).
+}
 \references{
+Laga, I., Bao, L., & Niu, X. (2021). Thirty Years of The Network
+Scale-up Method. \emph{Journal of the American Statistical Association},
+116(535), 1548–1559.
+
 Baum, D. S., & Marsden, P. V. (2023). Uses and limitations of
 dichotomous aggregate relational data. \emph{Social Networks}, 74, 42–61.
 \url{https://doi.org/10.1016/j.socnet.2023.02.001}
 
-Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A. J.
-(2015). Estimating Population Size Using the Network Scale Up Method. \emph{The
-Annals of Applied Statistics}, 9(3), 1247–1277.
+Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A. J. (2015).
+Estimating Population Size Using the Network Scale Up Method. \emph{The Annals
+of Applied Statistics}, 9(3), 1247–1277.
 \url{https://doi.org/10.1214/15-AOAS827}
 }
+\seealso{
+Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
+\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel} without fitting it.
+
+Other Models for ARD: 
+\code{\link{test_model}()}
+}
+\concept{Models for ARD}
 \concept{Models of Maltiel et al (2015)}

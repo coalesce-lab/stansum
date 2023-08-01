@@ -8,12 +8,10 @@
 #'
 #' @returns `get_model` returns an "CmdStanModel" object.
 #'
-#' @importFrom instantiate stan_package_model
-#'
 #' @export
 get_model <- function(name, ...) {
   stopifnot(name %in% list_models())
-  stan_package_model(name = name, package = "stansum", ...)
+  instantiate::stan_package_model(name = name, package = "stansum", ...)
 }
 
 
