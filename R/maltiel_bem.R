@@ -13,7 +13,7 @@
 #'   Annals of Applied Statistics, 9(3), 1247–1277.
 #'   <https://doi.org/10.1214/15-AOAS827>
 #'
-#' @importFrom instantiate stan_package_model2
+#' @importFrom instantiate stan_package_model
 #'
 #' @family Models of Maltiel et al (2015)
 
@@ -24,7 +24,6 @@
 #' @export
 maltiel_bem_count <- {
   p <- system.file("stan", "MaltielBEM_count.stan", package = "stansum")
-  stan_package_model2(p)
 }
 
 
@@ -36,7 +35,6 @@ maltiel_bem_count <- {
 #' @export
 maltiel_bem_dichotomous <- {
   p <- system.file("stan", "MaltielBEM_dichotomous.stan", package = "stansum")
-  stan_package_model2(p)
 }
 
 
@@ -48,5 +46,4 @@ maltiel_bem_dichotomous <- {
 #' @export
 maltiel_bem_trichotomous <- {
   p <- system.file("stan", "MaltielBEM_trichotomous.stan", package = "stansum")
-  stan_package_model2(p)
 }

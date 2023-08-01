@@ -6,10 +6,6 @@
 #'
 #' @section Data:
 #'
-#' ```{r model-data, echo = FALSE, results="asis"}
-#' cat(md_itemize(format_data(test_model)))
-#' ```
-#'
 #' where
 #'
 #' - `N`: Number of trials
@@ -17,19 +13,15 @@
 #'
 #' @section Parameters:
 #'
-#' ```{r model-parameters, echo = FALSE, results="asis"}
-#' cat(md_itemize(format_parameters(test_model)))
-#' ```
 #'
 #' where
 #'
 #' - `theta`: Probability
 #'
 #'
-#' @importFrom instantiate stan_package_model2
+#' @importFrom instantiate stan_package_model
 #' @export
 
 test_model <- {
   p <- system.file("stan", "bernoulli.stan", package = "stansum")
-  stan_package_model2(p)
 }

@@ -15,10 +15,6 @@ A test Bernoulli model from Stan documentation.
 }
 \section{Data}{
 
-\itemize{
-\item N < int > [0]
-\item y < int > [1]
-}
 
 where
 \itemize{
@@ -29,9 +25,6 @@ where
 
 \section{Parameters}{
 
-\itemize{
-\item theta < real > [0]
-}
 
 where
 \itemize{
