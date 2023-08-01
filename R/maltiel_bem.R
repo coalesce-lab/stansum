@@ -9,12 +9,12 @@
 #'
 #' @references Baum, D. S., & Marsden, P. V. (2023). Uses and limitations of
 #'   dichotomous aggregate relational data. *Social Networks*, 74, 42–61.
-#'   <https://doi.org/10.1016/j.socnet.2023.02.001>
+#'   \doi{10.1016/j.socnet.2023.02.001}
 #'
 #'   Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A. J. (2015).
 #'   Estimating Population Size Using the Network Scale Up Method. *The Annals
 #'   of Applied Statistics*, 9(3), 1247–1277.
-#'   <https://doi.org/10.1214/15-AOAS827>
+#'   \doi{10.1214/15-AOAS827}
 #'
 #' @family models of Maltiel et al (2015)
 

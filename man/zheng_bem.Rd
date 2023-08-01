@@ -50,7 +50,7 @@ method.
 \references{
 Baum, D. S., & Marsden, P. V. (2023). Uses and limitations of
 dichotomous aggregate relational data. \emph{Social Networks}, 74, 42–61.
-\url{https://doi.org/10.1016/j.socnet.2023.02.001}
+\doi{10.1016/j.socnet.2023.02.001}
 
 Zheng, T., Salganik, M. J., & Gelman, A. (2006). How Many People Do You
 Know in Prison? Using Overdispersion in Count Data to Estimate Social
