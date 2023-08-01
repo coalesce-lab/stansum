@@ -8,6 +8,21 @@
 \description{
 Interface to various precompiled Stan models for Aggregated Relational Data that estimate, among other things, network degrees. Includes models by Zheng et al (2006) \doi{10.1198/016214505000001168}, Maltiel et al (2015) \doi{10.1214/15-AOAS827}, Baum & Marsden (2023) \doi{10.1016/j.socnet.2023.02.001}.
 }
+\references{
+Baum, D. S., & Marsden, P. V. (2023). Uses and limitations of
+dichotomous aggregate relational data. \emph{Social Networks}, 74, 42–61.
+\doi{10.1016/j.socnet.2023.02.001}
+
+Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A. J. (2015).
+Estimating Population Size Using the Network Scale Up Method. \emph{The Annals
+of Applied Statistics}, 9(3), 1247–1277.
+\doi{10.1214/15-AOAS827}
+
+Zheng, T., Salganik, M. J., & Gelman, A. (2006). How Many People Do You
+Know in Prison? Using Overdispersion in Count Data to Estimate Social
+Structure in Networks. Journal of the American Statistical Association,
+101(474), 409–423. \doi{10.1198/016214505000001168}
+}
 \author{
 \strong{Maintainer}: Michal Bojanowski \email{michal2992@gmail.com} (\href{https://orcid.org/0000-0001-7503-852X}{ORCID})
 
