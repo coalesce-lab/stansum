@@ -3,7 +3,7 @@ title: "Getting Started with 'stansum'"
 output: rmarkdown::html_vignette
 bibliography: refs.bib
 vignette: >
-  %\VignetteIndexEntry{stansum}
+  %\VignetteIndexEntry{Getting Started with 'stansum'}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
