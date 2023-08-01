@@ -16,6 +16,8 @@ Maltiel et al. (2015), Baum and Marsden (2023)
 The package relies on **instantiate** (Landau 2023) to embed Stan models
 in an R package.
 
+See package’s webpage at <https://coalesce-lab.github.io/stansum/>.
+
 ## Authors and contributors
 
 - Michał Bojanowski
@@ -37,7 +39,7 @@ or soon from <https://coalesce-lab.r-universe.dev/builds>.
 
 Michał Bojanowski thanks European Research Council for support through
 grant 101020038 (PI Miranda Lubbers, COALESCE Lab, UAB)
-<http://patchwork-erc.eu/>“.
+<http://patchwork-erc.eu/>.
 
 [![](man/figures/logos-patchwork.png)](http://coalesce-lab.com/en)
 
