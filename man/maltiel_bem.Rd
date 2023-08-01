@@ -69,7 +69,8 @@ Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 Other models in this package: 
 \code{\link{maltiel_rdm}},
 \code{\link{test_model}()},
-\code{\link{zheng_bem}}
+\code{\link{zheng_bem}},
+\code{\link{zheng_gp}}
 
 Other models of Maltiel et al (2015): 
 \code{\link{maltiel_rdm}}
