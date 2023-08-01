@@ -27,9 +27,12 @@ Additional_repositories:
     https://mc-stan.org/r-packages/
 SystemRequirements: CmdStan (https://mc-stan.org/users/interfaces/cmdstan)
 Suggests: 
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Remotes:
     wlandau/instantiate
 LazyData: true
 URL: https://coalesce-lab.github.io/stansum/
+VignetteBuilder: knitr
