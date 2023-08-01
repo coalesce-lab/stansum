@@ -20,16 +20,9 @@ Object of class \link[cmdstanr:CmdStanMCMC]{cmdstanr::CmdStanMCMC} containing th
 A test Bernoulli model taken from Stan documentation.
 }
 \details{
-Calling this function will load the model object using \code{\link[=get_model]{get_model()}}
-and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}} method.
-
-See Laga et al (2021) for a review of other models for Aggregated
-Relational Data (ARD).
-}
-\references{
-Laga, I., Bao, L., & Niu, X. (2021). Thirty Years of The Network
-Scale-up Method. \emph{Journal of the American Statistical Association},
-116(535), 1548–1559.
+Calling this function(s) will load the model object using
+\code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}
+method.
 }
 \seealso{
 Use \code{\link[=get_model]{get_model()}} to return Stan model object of class

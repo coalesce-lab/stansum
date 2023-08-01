@@ -48,17 +48,11 @@ proposed by Baum & Marsden (2023).
 }
 }
 \details{
-Calling this function will load the model object using \code{\link[=get_model]{get_model()}}
-and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}} method.
-
-See Laga et al (2021) for a review of other models for Aggregated
-Relational Data (ARD).
+Calling this function(s) will load the model object using
+\code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}
+method.
 }
 \references{
-Laga, I., Bao, L., & Niu, X. (2021). Thirty Years of The Network
-Scale-up Method. \emph{Journal of the American Statistical Association},
-116(535), 1548–1559.
-
 Baum, D. S., & Marsden, P. V. (2023). Uses and limitations of
 dichotomous aggregate relational data. \emph{Social Networks}, 74, 42–61.
 \url{https://doi.org/10.1016/j.socnet.2023.02.001}
