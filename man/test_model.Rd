@@ -30,6 +30,7 @@ Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 
 Other models in this package: 
 \code{\link{maltiel_bem}},
-\code{\link{maltiel_rdm}}
+\code{\link{maltiel_rdm}},
+\code{\link{zheng_bem}}
 }
 \concept{models in this package}
