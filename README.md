@@ -45,6 +45,10 @@ grant 101020038 (PI Miranda Lubbers, COALESCE Lab, UAB)
 
 ![](man/figures/logos-erc.png)
 
+## License
+
+GPL 3
+
 ## References
 
 <div id="refs" class="references csl-bib-body hanging-indent">

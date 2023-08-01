@@ -59,4 +59,9 @@ Michał Bojanowski thanks European Research Council for support through grant 10
 
 ![](man/figures/logos-erc.png)
 
+## License
+
+GPL 3
+
+
 ## References
