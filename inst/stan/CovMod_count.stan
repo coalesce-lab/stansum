@@ -1,25 +1,25 @@
-data {             
+data {
   int N;
-  int K;                        
-  int y[N, K];
+  int K;
+  array[N, K] int y;
   vector[N] age;
   vector[N] male;
 }
-  
+
 parameters {
-  vector[N] alpha;                       
-  vector[K] beta;                    
+  vector[N] alpha;
+  vector[K] beta;
   real mu_beta;
-  real<lower=0> sigma_beta;                        
+  real<lower=0> sigma_beta;
   real<lower=0> sigma_alpha;
-  vector[K] gamma_age; 
-  vector[K] gamma_sex; 
-  real<lower=0> sigma_gamma; 
+  vector[K] gamma_age;
+  vector[K] gamma_sex;
+  real<lower=0> sigma_gamma;
 }
-  
+
 model {
-  alpha ~ normal(0, sigma_alpha);  
-  beta ~ normal(mu_beta, sigma_beta); 
+  alpha ~ normal(0, sigma_alpha);
+  beta ~ normal(mu_beta, sigma_beta);
   gamma_age ~ normal(0, sigma_gamma);
   gamma_sex ~ normal(0, sigma_gamma);
   sigma_gamma ~ gamma(1, 0.01);
