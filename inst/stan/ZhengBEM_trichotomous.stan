@@ -13,7 +13,7 @@ functions {
 data {
   int N;
   int K;
-  int y[N, K];
+  array[N, K] int y;
 }
 
 parameters {

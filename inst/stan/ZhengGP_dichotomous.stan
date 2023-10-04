@@ -10,7 +10,7 @@ functions {
 data {
   int<lower=0> N;
   int<lower=0> K;
-  int  y[N, K];
+  array[N, K] int y;
 }
 
 parameters {
