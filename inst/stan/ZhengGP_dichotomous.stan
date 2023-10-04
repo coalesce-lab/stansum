@@ -7,22 +7,22 @@ functions {
   }
 }
 
-data {             
-  int<lower=0> N;                        
-  int<lower=0> K;                        
+data {
+  int<lower=0> N;
+  int<lower=0> K;
   int  y[N, K];
 }
-  
+
 parameters {
-  vector[N] alpha;                       
-  vector[K] beta;                    
+  vector[N] alpha;
+  vector[K] beta;
   real mu_beta;
-  real<lower=0> sigma_beta;                        
-  real<lower=0> sigma_alpha;              
+  real<lower=0> sigma_beta;
+  real<lower=0> sigma_alpha;
 }
-  
+
 model {
-  alpha ~ normal(0, sigma_alpha);  
+  alpha ~ normal(0, sigma_alpha);
   for (i in 1:N) {
     for (k in 1:K) {
       if (y[i,k] == 0) {

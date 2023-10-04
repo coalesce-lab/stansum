@@ -6,7 +6,7 @@ functions {
 
 data {
   int N;
-  int K; 
+  int K;
   matrix[N, K] y;
   vector<lower=0, upper=1>[K] m;
   vector[N] L;

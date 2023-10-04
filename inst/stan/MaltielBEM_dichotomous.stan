@@ -8,7 +8,7 @@ functions {
 }
 
 data {
-  int K; 
+  int K;
   int N;
   matrix[N, K] y;
   vector <lower=0, upper=1>[K] m;
