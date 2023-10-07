@@ -27,6 +27,7 @@ Additional_repositories:
     https://mc-stan.org/r-packages/
 SystemRequirements: CmdStan (https://mc-stan.org/users/interfaces/cmdstan)
 Suggests: 
+    cmdstanr (>= 0.5.2),
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)

@@ -10,24 +10,24 @@ functions {
   }
 }
 
-data {             
+data {
   int N;
-  int K;                        
-  int y[N, K];                         
+  int K;
+  array[N, K] int y;
 }
 
 parameters {
-  vector[N] alpha;                       
-  vector[K] beta;                         
+  vector[N] alpha;
+  vector[K] beta;
   vector<lower = 0 , upper = 1>[K] inv_omega;
   real mu_beta;
-  real<lower=0> sigma_beta;                        
-  real<lower=0> sigma_alpha;             
+  real<lower=0> sigma_beta;
+  real<lower=0> sigma_alpha;
 }
-  
+
 model {
-  alpha ~ normal(0, sigma_alpha);  
-  beta ~ normal(mu_beta, sigma_beta);                 
+  alpha ~ normal(0, sigma_alpha);
+  beta ~ normal(mu_beta, sigma_beta);
   for (k in 1:K) {
     real omega_k_m1;
     omega_k_m1 = inv(inv(inv_omega[k]) - 1);
