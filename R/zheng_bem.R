@@ -24,7 +24,7 @@
 #'
 #' @description - `zheng_bem_count` -- model for count responses
 #'
-#' @param N integer; population size
+#' @param N integer; sample size
 #' @param K integer; number of sub-populations
 #' @param y integer matrix; ARD
 #' @param ... other arguments passed to [cmdstanr::sample()]

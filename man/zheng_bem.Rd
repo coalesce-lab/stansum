@@ -14,7 +14,7 @@ zheng_bem_dichotomous(N, K, y, ...)
 zheng_bem_trichotomous(N, K, y, ...)
 }
 \arguments{
-\item{N}{integer; population size}
+\item{N}{integer; sample size}
 
 \item{K}{integer; number of sub-populations}
 
