@@ -26,7 +26,7 @@ list_models <- function() {
     "\\.stan$",
     "",
     list.files(
-      path = system.file("stan", package = "stansum"),
+      path = system.file("bin", "stan", package = "stansum"),
       pattern = "\\.stan$"
     )
   )
