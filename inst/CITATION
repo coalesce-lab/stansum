@@ -1,0 +1,8 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "{stansum}: {B}ayesian Models for Aggregated Relational Data and Network Scale-Up Method",
+  author   = c(person("Michal", "Bojanowski"), person("Derick S.", "Baum")),
+  year     = 2024,
+  note     = "R package version 1.0.0",
+  url      = "https://coalesce-lab.github.io/stansum/"
+)
