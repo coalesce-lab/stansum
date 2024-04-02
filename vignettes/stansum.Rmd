@@ -1,6 +1,8 @@
 ---
 title: "Getting Started with 'stansum'"
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+    toc: true
 bibliography: refs.bib
 vignette: >
   %\VignetteIndexEntry{Getting Started with 'stansum'}
@@ -22,17 +24,50 @@ library(stansum)
 ```
 
 
-# Loading models
+Package **stansum** provides a collection of models implemented in Stan [@stan-manual] and prepared for R using **instantiate** [@r-instantiate]. What follows is a rudimentary rundown of how to use the package.
 
-Use `get_model()` to get a **cmdstanr**-style [@r-cmdstanr] object of R6 class "CmdStanModel", for example:
+The list of implemented models can be inspected with `list_models()`. At this moment the following models are implemented:
 
-```{r get-model}
-mod <- get_model("bernoulli")
-class(mod)
-mod
+```{r list-models, results="asis", echo=FALSE}
+paste0("- `",list_models(), "`") |> 
+  cat(sep = "\n")
 ```
 
-# Fitting models
+The recommended way of using the models is via the provided R wrappers.
+
+
+# Fitting models included in the package
+
+Let's load an example dataset:
+
+```{r load-data}
+data("Fake_maltiel_RD", package="stansum")
+str(Fake_maltiel_RD)
+```
+
+It is an ARD consisting of 1000 respondents and 3 sub-populations sampled from the Random Degree model of @maltiel_etal_2015.
+
+
+
+
+## @maltiel_etal_2015 Barrier Effects model
+
+```{r}
+fit <- maltiel_bem_count(
+  N = nrow(Fake_maltiel_RD),
+  K = ncol(Fake_maltiel_RD),
+  y = Fake_maltiel_RD,
+  L = 0,
+  m = c(100, 200, 300) / 10000,
+  seed = 666
+)
+```
+
+
+
+
+
+## A test Bernoulli model
 
 All models have R wrappers. For example `test_model()` wraps a simple Bernoulli model borrowed from Stan documentation:
 
@@ -47,6 +82,20 @@ The results are:
 class(fit)
 fit$summary()
 ```
+
+
+
+# Loading models
+
+Use `get_model()` to get a **cmdstanr**-style [@r-cmdstanr] object of R6 class "CmdStanModel", for example:
+
+```{r get-model}
+mod <- get_model("bernoulli")
+class(mod)
+mod
+```
+
+
 
 
 # References
