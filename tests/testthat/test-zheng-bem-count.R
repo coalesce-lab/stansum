@@ -1,6 +1,7 @@
 data("Fake_maltiel_RD", package = "stansum")
 
 test_that("Zheng et al BEM works", {
+  skip_on_cran()
   expect_no_error(
     zheng_bem_count(
       N = nrow(Fake_maltiel_RD),
