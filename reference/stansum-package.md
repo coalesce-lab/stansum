@@ -40,7 +40,8 @@ Useful links:
 
 Authors:
 
-- Derick S. Baum
+- Derick S. Baum <derick_baum@brown.edu>
+  ([ORCID](https://orcid.org/0000-0001-7539-6749))
 
 Other contributors:
 
