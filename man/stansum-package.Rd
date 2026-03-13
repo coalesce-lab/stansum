@@ -35,7 +35,7 @@ Useful links:
 
 Authors:
 \itemize{
-  \item Derick S. Baum
+  \item Derick S. Baum \email{derick_baum@brown.edu} (\href{https://orcid.org/0000-0001-7539-6749}{ORCID})
 }
 
 Other contributors:
