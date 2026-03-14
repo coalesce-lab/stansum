@@ -65,6 +65,7 @@ Other models in this package:
 \code{\link{maltiel_bem}},
 \code{\link{maltiel_rdm}},
 \code{\link{test_model}()},
+\code{\link{zheng_bem_intervals}()},
 \code{\link{zheng_gp}}
 
 Other models of Zheng et al (2006): 
