@@ -1,4 +1,6 @@
-// Model 1a - vectorized, non-centered, within-chain parallelism via reduce_sum
+// BEM of Zheng etal for ordered categorical intervals responses
+//
+// Stan implementation features within-chain parallelism via reduce_sum().
 
 functions {
   real partial_sum(
