@@ -61,7 +61,8 @@ Other models in this package:
 \code{\link{zheng_bem_intervals}()}
 
 Other models of Zheng et al (2006): 
-\code{\link{zheng_bem}}
+\code{\link{zheng_bem}},
+\code{\link{zheng_bem_intervals}()}
 }
 \concept{models in this package}
 \concept{models of Zheng et al (2006)}

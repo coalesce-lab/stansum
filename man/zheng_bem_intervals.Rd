@@ -2,18 +2,14 @@
 % Please edit documentation in R/zheng_bem_intervals.R
 \name{zheng_bem_intervals}
 \alias{zheng_bem_intervals}
-\title{BEM of Zheng etal for ordered categorical intervals responses}
+\title{BEM of Zheng etal for ordered categorical intervals response}
 \usage{
-zheng_bem_intervals(N, K, J, y_cat, L, U, ...)
+zheng_bem_intervals(y_cat, J, L, U, ...)
 }
 \arguments{
-\item{N}{integer; number of respondents}
-
-\item{K}{integer; number of subpopulations}
+\item{y_cat}{matrix; ARD of integer responses 1..}
 
 \item{J}{integer; number of response categories}
-
-\item{y_cat}{matrix; ARD of integer responses 1..}
 
 \item{L, U}{numeric; vector of lower and upper bounds of the intervals}
 
@@ -23,12 +19,63 @@ zheng_bem_intervals(N, K, J, y_cat, L, U, ...)
 Object of class \link[cmdstanr:CmdStanMCMC]{cmdstanr::CmdStanMCMC} containing the samples.
 }
 \description{
-Variation on the BEM of Zheng et al for categorical response.
+Variation on the BEM of Zheng et al for categorical response. The response
+categories correspond to grouped counts.
 }
 \details{
 Calling this function(s) will load the model object using
 \code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}
 method.
+
+Matrix \code{y_cat} is assumed to contain integers 1..J. Each value
+corresponds to an interval bounds of which are defined by the corresponding
+elements of arguments \code{L} and \code{U}. In other words, for example, \code{y_cat=2}
+corresponds to counts in the interval defined by \code{L[2]} and \code{U[2]}.
+}
+\examples{
+\dontrun{
+set.seed(666)
+alphas <- log(c(2,2,3,3))
+betas <- c(1, 2, 3)
+omega <- rep(1, length(betas))
+mu <- outer(alphas, betas, "+") |>
+  exp() |>
+  sweep(2, omega, "*")
+omegas <- omega[col(mu)]
+dim(omegas) <- dim(mu)
+y <- rnbinom(length(mu), mu = mu, size = omegas)
+dim(y) <- dim(mu)
+y
+
+ycat <- cut(y, c(-Inf, 10, 20, 50, Inf)) |>
+  as.numeric() |>
+  structure(dim = dim(y))
+
+
+fit <- zheng_bem_intervals(
+  y_cat = ycat,
+  J = 4,
+  L = c(0, 11, 21, 51),
+  U = c(10, 20, 50, -1),
+  iter_warmup = 500,
+  iter_sampling = 250,
+  chains = 4,
+  parallel_chains = 4,
+  threads_per_chain = 2
+)
+
+fit$diagnostic_summary()
+
+# Trace rank plot
+fit$draws("alpha") |>
+  apply(3, median)
+}
+}
+\references{
+Zheng, T., Salganik, M. J., & Gelman, A. (2006). How Many People
+Do You Know in Prison? Using Overdispersion in Count Data to Estimate
+Social Structure in Networks. Journal of the American Statistical
+Association, 101(474), 409–423. \doi{10.1198/016214505000001168}
 }
 \seealso{
 Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
@@ -40,5 +87,10 @@ Other models in this package:
 \code{\link{test_model}()},
 \code{\link{zheng_bem}},
 \code{\link{zheng_gp}}
+
+Other models of Zheng et al (2006): 
+\code{\link{zheng_bem}},
+\code{\link{zheng_gp}}
 }
 \concept{models in this package}
+\concept{models of Zheng et al (2006)}

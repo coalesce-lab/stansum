@@ -69,6 +69,7 @@ Other models in this package:
 \code{\link{zheng_gp}}
 
 Other models of Zheng et al (2006): 
+\code{\link{zheng_bem_intervals}()},
 \code{\link{zheng_gp}}
 }
 \concept{models in this package}
