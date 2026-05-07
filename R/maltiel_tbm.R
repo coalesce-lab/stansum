@@ -25,7 +25,9 @@
 #' @param K integer; number of sub-populations
 #' @param y numeric matrix; ARD counts (N x K)
 #' @param m numeric vector; fractional sub-population sizes (length K)
-#' @param L numeric vector; lower bounds on individual degrees (length N)
+#' @param L numeric vector; lower bounds on individual degrees (length N).
+#'   Must satisfy `L[i] >= max(y[i,])` for each respondent `i` so that the
+#'   degree is always at least as large as the maximum observed count.
 #' @param eta numeric vector; Beta prior shape 1 for each transmission bias
 #'   (length K)
 #' @param v numeric vector; Beta prior shape 2 for each transmission bias
@@ -34,7 +36,7 @@
 #'
 #' @export
 maltiel_tbm_count <- function(N, K, y, m, L, eta, v, ...) {
-  mod <- get_model("TBias_count")
+  mod <- get_model("MaltielTBM_count")
   d <- list(N = N, K = K, y = y, m = m, L = L, eta = eta, v = v)
   mod$sample(data = d, ...)
 }

@@ -16,7 +16,9 @@ maltiel_tbm_count(N, K, y, m, L, eta, v, ...)
 
 \item{m}{numeric vector; fractional sub-population sizes (length K)}
 
-\item{L}{numeric vector; lower bounds on individual degrees (length N)}
+\item{L}{numeric vector; lower bounds on individual degrees (length N).
+Must satisfy \code{L[i] >= max(y[i,])} for each respondent \code{i} so that the
+degree is always at least as large as the maximum observed count.}
 
 \item{eta}{numeric vector; Beta prior shape 1 for each transmission bias
 (length K)}
