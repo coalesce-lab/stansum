@@ -13,8 +13,8 @@ test_that("transmission bias count model works", {
       eta = rep(1, K),
       v = rep(1, K),
       chains = 1,
-      iter_warmup = 5,
-      iter_sampling = 5
+      iter_warmup = 200,
+      iter_sampling = 10
     )
   )
 })
