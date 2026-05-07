@@ -35,6 +35,23 @@
 #' @param ... other arguments passed to [cmdstanr::sample()]
 #'
 #' @export
+#'
+#' @examples
+#' data("Fake_maltiel_RD", package = "stansum")
+#' K <- ncol(Fake_maltiel_RD)
+#' r <- maltiel_tbm_count(
+#'   N = nrow(Fake_maltiel_RD),
+#'   K = K,
+#'   y = data.matrix(Fake_maltiel_RD),
+#'   m = rep(0.01, K),
+#'   L = apply(data.matrix(Fake_maltiel_RD), 1, max),
+#'   eta = rep(1, K),
+#'   v = rep(1, K),
+#'   chains = 1,
+#'   iter_warmup = 200,
+#'   iter_sampling = 10
+#' )
+#'
 maltiel_tbm_count <- function(N, K, y, m, L, eta, v, ...) {
   mod <- get_model("MaltielTBM_count")
   d <- list(N = N, K = K, y = y, m = m, L = L, eta = eta, v = v)
