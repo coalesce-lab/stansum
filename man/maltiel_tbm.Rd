@@ -44,6 +44,23 @@ Calling this function(s) will load the model object using
 \code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:sample]{cmdstanr::sample()}}
 method.
 }
+\examples{
+data("Fake_maltiel_RD", package = "stansum")
+K <- ncol(Fake_maltiel_RD)
+r <- maltiel_tbm_count(
+  N = nrow(Fake_maltiel_RD),
+  K = K,
+  y = data.matrix(Fake_maltiel_RD),
+  m = rep(0.01, K),
+  L = apply(data.matrix(Fake_maltiel_RD), 1, max),
+  eta = rep(1, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 200,
+  iter_sampling = 10
+)
+
+}
 \references{
 Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A.
 J. (2015). Estimating Population Size Using the Network Scale Up
