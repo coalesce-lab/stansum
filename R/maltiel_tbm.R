@@ -1,0 +1,40 @@
+#' Maltiel et al Transmission Bias Model
+#'
+#' @name maltiel_tbm
+#'
+#' @description Bayesian model for ARD with transmission bias parameters.
+#'
+#' @template wrapped-stan-model
+#'
+#' @references Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A.
+#'   J. (2015). Estimating Population Size Using the Network Scale Up
+#'   Method. *The Annals of Applied Statistics*, 9(3), 1247–1277.
+#'   \doi{10.1214/15-AOAS827}
+#'
+#' @family models of Maltiel et al (2015)
+
+
+
+
+#' @rdname maltiel_tbm
+#'
+#' @description - `maltiel_tbm_count` -- transmission bias model for count
+#'   responses. All `tau_k` are estimated from the data.
+#'
+#' @param N integer; population size
+#' @param K integer; number of sub-populations
+#' @param y numeric matrix; ARD counts (N x K)
+#' @param m numeric vector; fractional sub-population sizes (length K)
+#' @param L numeric vector; lower bounds on individual degrees (length N)
+#' @param eta numeric vector; Beta prior shape 1 for each transmission bias
+#'   (length K)
+#' @param v numeric vector; Beta prior shape 2 for each transmission bias
+#'   (length K)
+#' @param ... other arguments passed to [cmdstanr::sample()]
+#'
+#' @export
+maltiel_tbm_count <- function(N, K, y, m, L, eta, v, ...) {
+  mod <- get_model("TBias_count")
+  d <- list(N = N, K = K, y = y, m = m, L = L, eta = eta, v = v)
+  mod$sample(data = d, ...)
+}
