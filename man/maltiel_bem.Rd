@@ -24,7 +24,7 @@ maltiel_bem_trichotomous(N, K, y, m, L, ...)
 
 \item{L}{numeric; lower bound on degree}
 
-\item{...}{other arguments passed to \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}}
+\item{...}{other arguments passed to \code{\link[cmdstanr:sample]{cmdstanr::sample()}}}
 }
 \value{
 Object of class \link[cmdstanr:CmdStanMCMC]{cmdstanr::CmdStanMCMC} containing the samples.
@@ -49,7 +49,7 @@ proposed by Baum & Marsden (2023).
 }
 \details{
 Calling this function(s) will load the model object using
-\code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}
+\code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:sample]{cmdstanr::sample()}}
 method.
 }
 \references{
@@ -66,14 +66,16 @@ of Applied Statistics}, 9(3), 1247–1277.
 Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel} without fitting it.
 
-Other models in this package: 
+Other models in this package:
 \code{\link{maltiel_rdm}},
-\code{\link{test_model}()},
+\code{\link{maltiel_tbm}},
+\code{\link[=test_model]{test_model()}},
 \code{\link{zheng_bem}},
 \code{\link{zheng_gp}}
 
-Other models of Maltiel et al (2015): 
-\code{\link{maltiel_rdm}}
+Other models of Maltiel et al (2015):
+\code{\link{maltiel_rdm}},
+\code{\link{maltiel_tbm}}
 }
 \concept{models in this package}
 \concept{models of Maltiel et al (2015)}

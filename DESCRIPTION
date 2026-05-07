@@ -21,7 +21,6 @@ Description: Interface to various precompiled Stan models for Aggregated
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Depends: 
     R (>= 3.4.0)
 Imports:
@@ -39,3 +38,4 @@ Remotes:
     wlandau/instantiate
 LazyData: true
 URL: https://coalesce-lab.github.io/stansum/
+Config/roxygen2/version: 8.0.0

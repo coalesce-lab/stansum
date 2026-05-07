@@ -35,6 +35,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Michal Bojanowski \email{michal2992@gmail.com} (\href{https://orcid.org/0000-0001-7503-852X}{ORCID})
   \item Derick S. Baum \email{derick_baum@brown.edu} (\href{https://orcid.org/0000-0001-7539-6749}{ORCID})
 }
 
