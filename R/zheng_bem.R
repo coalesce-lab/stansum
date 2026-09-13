@@ -36,6 +36,19 @@ zheng_bem_count <- function(N, K, y, ...) {
   mod$sample(data = d, ...)
 }
 
+#' @rdname zheng_bem
+#'
+#' @description - `zheng_bem_count2` -- model for count responses with different parametrization for omega and different priors
+#' 
+#' @export
+zheng_bem_count2 <- function(N, K, y, ...) {
+  mod <- get_model("ZhengBEM_count2")
+  d <- list(N=N, K=K, y=y)
+  mod$sample(data = d, ...)
+}
+
+
+
 
 #' @rdname zheng_bem
 #'
