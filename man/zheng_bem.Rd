@@ -3,11 +3,14 @@
 \name{zheng_bem}
 \alias{zheng_bem}
 \alias{zheng_bem_count}
+\alias{zheng_bem_count2}
 \alias{zheng_bem_dichotomous}
 \alias{zheng_bem_trichotomous}
 \title{Zheng et al (2006) Barrier Effects Model}
 \usage{
 zheng_bem_count(N, K, y, ...)
+
+zheng_bem_count2(N, K, y, ...)
 
 zheng_bem_dichotomous(N, K, y, ...)
 
@@ -20,7 +23,7 @@ zheng_bem_trichotomous(N, K, y, ...)
 
 \item{y}{integer matrix; ARD}
 
-\item{...}{other arguments passed to \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}}
+\item{...}{other arguments passed to \code{\link[cmdstanr:sample]{cmdstanr::sample()}}}
 }
 \value{
 Object of class \link[cmdstanr:CmdStanMCMC]{cmdstanr::CmdStanMCMC} containing the samples.
@@ -30,6 +33,10 @@ Bayesian model for ARD...
 
 \itemize{
 \item \code{zheng_bem_count} -- model for count responses
+}
+
+\itemize{
+\item \code{zheng_bem_count2} -- model for count responses with different parametrization for omega and different priors
 }
 
 \itemize{
@@ -44,7 +51,7 @@ proposed by Baum & Marsden (2023).
 }
 \details{
 Calling this function(s) will load the model object using
-\code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}}
+\code{\link[=get_model]{get_model()}} and sample from the posterior using the \code{\link[cmdstanr:sample]{cmdstanr::sample()}}
 method.
 }
 \references{
@@ -61,13 +68,13 @@ Structure in Networks. Journal of the American Statistical Association,
 Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel} without fitting it.
 
-Other models in this package: 
+Other models in this package:
 \code{\link{maltiel_bem}},
 \code{\link{maltiel_rdm}},
-\code{\link{test_model}()},
+\code{\link[=test_model]{test_model()}},
 \code{\link{zheng_gp}}
 
-Other models of Zheng et al (2006): 
+Other models of Zheng et al (2006):
 \code{\link{zheng_gp}}
 }
 \concept{models in this package}
