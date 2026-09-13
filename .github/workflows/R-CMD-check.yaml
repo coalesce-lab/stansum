@@ -28,6 +28,10 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # The -Wno-* flags R CMD check reports as non-portable come from CmdStan's
+      # makefile when the Stan models are compiled at install time, not from
+      # this package (src/Makevars is empty), so the check is a false positive.
+      _R_CHECK_COMPILATION_FLAGS_: false
 
     steps:
       - uses: actions/checkout@v3
