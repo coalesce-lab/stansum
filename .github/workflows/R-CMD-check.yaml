@@ -28,10 +28,16 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      # The -Wno-* flags R CMD check reports as non-portable come from CmdStan's
-      # makefile when the Stan models are compiled at install time, not from
-      # this package (src/Makevars is empty), so the check is a false positive.
-      _R_CHECK_COMPILATION_FLAGS_: false
+      # The -Wno-* flags below come from CmdStan's makefiles when the Stan
+      # models are compiled at install time (src/install.libs.R), not from
+      # this package (src/Makevars is empty). `--as-cran` forces
+      # _R_CHECK_COMPILATION_FLAGS_=TRUE, so the check cannot be disabled;
+      # instead whitelist the flags CmdStan injects on Linux/gcc.
+      _R_CHECK_COMPILATION_FLAGS_KNOWN_: >-
+        -Wno-class-memaccess
+        -Wno-deprecated-declarations
+        -Wno-ignored-attributes
+        -Wno-sign-compare
 
     steps:
       - uses: actions/checkout@v3
