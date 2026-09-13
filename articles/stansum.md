@@ -1,0 +1,732 @@
+# Getting Started with 'stansum'
+
+``` r
+
+library(stansum)
+```
+
+The **stansum** package wraps a collection of precompiled Stan models
+for Aggregated Relational Data (ARD) proposed by Zheng et al. (2006),
+Maltiel et al. (2015) and Baum and Marsden (2023). The models are
+embedded in the package using **instantiate** (Landau 2023) and sampled
+with **cmdstanr** (Gabry et al. 2022).
+
+This vignette fits every model once. The examples are deliberately as
+computationally cheap as possible: they use a small subset of the data
+and a tiny number of MCMC iterations. Their purpose is to show the
+calling syntax and the structure of the fitted objects, **not** to
+produce meaningful estimates.
+
+## Listing and loading models
+
+All models shipped with the package are listed by
+[`list_models()`](https://coalesce-lab.github.io/stansum/reference/get_model.md):
+
+``` r
+
+list_models()
+#>  [1] "bernoulli"               "CovMod_count"           
+#>  [3] "CovMod_dichotomous"      "MaltielBEM_count"       
+#>  [5] "MaltielBEM_dichotomous"  "MaltielBEM_trichotomous"
+#>  [7] "MaltielRDM_count"        "MaltielRDM_dichotomous" 
+#>  [9] "ZhengBEM_count"          "ZhengBEM_count2"        
+#> [11] "ZhengBEM_dichotomous"    "ZhengBEM_trichotomous"  
+#> [13] "ZhengGP_count"           "ZhengGP_dichotomous"
+```
+
+Use
+[`get_model()`](https://coalesce-lab.github.io/stansum/reference/get_model.md)
+to load one of them as a **cmdstanr** object of R6 class “CmdStanModel”
+without fitting it:
+
+``` r
+
+mod <- get_model("ZhengBEM_count")
+class(mod)
+#> [1] "CmdStanModel" "R6"
+basename(mod$exe_file())
+#> [1] "ZhengBEM_count"
+```
+
+Note that the object is created from the precompiled executable rather
+than a Stan file, so methods that need the source (such as `$print()` or
+`$variables()`) are unavailable. The Stan sources are installed
+alongside the executables:
+
+``` r
+
+stan_file <- system.file("bin", "stan", "ZhengBEM_count.stan", package = "stansum")
+cat(readLines(stan_file), sep = "\n")
+#> data {
+#>   int N;
+#>   int K;
+#>   array[N, K] int y;
+#> }
+#> 
+#> parameters {
+#>   vector[N] alpha;
+#>   vector[K] beta;
+#>   vector<lower = 0 , upper = 1>[K] inv_omega;
+#>   real mu_beta;
+#>   real<lower=0> sigma_beta;
+#>   real<lower=0> sigma_alpha;
+#> }
+#> 
+#> model {
+#>   alpha ~ normal(0, sigma_alpha);
+#>   beta ~ normal(mu_beta, sigma_beta);
+#>   for (k in 1:K) {
+#>     real omega_k_m1;
+#>     omega_k_m1 = inv(inv(inv_omega[k]) - 1);
+#>     for (i in 1:N) {
+#>       if (y[i,k] >= 0) {
+#>         real xi_i_k;
+#>         xi_i_k = omega_k_m1 * exp(alpha[i] + beta[k]);
+#>         y[i,k] ~ neg_binomial(xi_i_k, omega_k_m1);
+#>       }
+#>     }
+#>   }
+#> }
+```
+
+The remaining sections use the R wrappers which load the model and
+sample from the posterior in one call.
+
+## Example data
+
+All examples use the artificial dataset `Fake_maltiel_RD` shipped with
+the package. It was simulated from the Random Degree model of Maltiel et
+al. (2015) for 1000 respondents and three subpopulations of sizes
+100000, 200000 and 300000 in a population of 3 million. See
+[`?Fake`](https://coalesce-lab.github.io/stansum/reference/Fake.md) for
+details.
+
+``` r
+
+data("Fake_maltiel_RD", package = "stansum")
+head(Fake_maltiel_RD)
+#>   p1 p2 p3
+#> 1  1  3  3
+#> 2  1  1  5
+#> 3  2  0  0
+#> 4  2  2  1
+#> 5  0  2  1
+#> 6  0  3  1
+```
+
+To keep the computations cheap we use the first 50 respondents only. The
+models expect ARD as a matrix with respondents in rows and
+subpopulations in columns:
+
+``` r
+
+y <- data.matrix(Fake_maltiel_RD)[1:50, ]
+N <- nrow(y)
+K <- ncol(y)
+```
+
+Some of the models accept dichotomous (does the respondent know anyone
+in the subpopulation: 0/1) or trichotomous (knows nobody / one person /
+two or more: 0/1/2) responses instead of counts (Baum and Marsden 2023).
+We derive them from the counts:
+
+``` r
+
+y01 <- 1L * (y > 0)
+y012 <- pmin(y, 2)
+```
+
+The Maltiel et al (2015) models additionally need `m` – the vector of
+subpopulation sizes as fractions of the population size – and `L` – a
+per-respondent lower bound on the degree. The count models parametrize
+the degree as `L + d_raw` with `d_raw > 0`, so `L` must be at least the
+largest number of people a respondent reported knowing in any
+subpopulation:
+
+``` r
+
+m <- c(1, 2, 3) * 1e5 / 3e6
+L <- apply(y, 1, max)
+```
+
+## Sampling settings
+
+Every wrapper passes `...` to the `$sample()` method of the
+“CmdStanModel” object, see \`?cmdstanr::`model-method-sample`. All calls
+below use
+
+- `chains = 1`, `iter_warmup = 100`, `iter_sampling = 100` – the
+  cheapest settings that still run in a reasonable manner. Real
+  applications require multiple chains and far more iterations.
+- `refresh = 0`, `show_messages = FALSE` and `show_exceptions = FALSE` –
+  suppress progress output and informational messages from Stan.
+- `seed = 666` – for reproducibility.
+
+With so few iterations the posterior summaries come with warnings about
+unreliable effective sample sizes (ESS). They are expected here and are
+not shown in this vignette.
+
+The arguments are spelled out in every call so that each example is
+self-contained.
+
+## A test model
+
+[`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md)
+wraps a simple Bernoulli model borrowed from the Stan documentation. It
+is useful for checking that the toolchain works:
+
+``` r
+
+y_test <- c(1, 1, 1, 1, 0, 0, 0, 0, 0, 0)
+fit <- test_model(
+  N = length(y_test),
+  y = y_test,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>  variable  mean median   sd  mad     q5   q95 rhat ess_bulk ess_tail
+#>     lp__  -8.77  -8.48 0.77 0.35 -10.21 -8.18 1.03       39       54
+#>     theta  0.47   0.51 0.14 0.15   0.24  0.69 1.00       57       78
+```
+
+## Zheng et al (2006) Barrier Effects Model
+
+See
+[`?zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md).
+
+### Count responses
+
+``` r
+
+fit <- zheng_bem_count(
+  N = N,
+  K = K,
+  y = y,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail
+#>  lp__     -163.26 -164.74 13.02 13.47 -181.31 -139.61 1.10        7       21
+#>  alpha[1]    0.07    0.06  0.18  0.17   -0.21    0.36 1.00      172       78
+#>  alpha[2]    0.08    0.06  0.22  0.24   -0.26    0.39 0.99      159       52
+#>  alpha[3]   -0.07   -0.07  0.16  0.16   -0.36    0.17 1.03      137      112
+#>  alpha[4]   -0.01    0.01  0.17  0.19   -0.32    0.22 0.99      200      112
+#>  alpha[5]   -0.03   -0.01  0.17  0.15   -0.31    0.26 1.00      200       51
+#>  alpha[6]    0.00    0.00  0.15  0.14   -0.27    0.26 1.02      177       60
+#>  alpha[7]    0.02    0.02  0.17  0.13   -0.24    0.31 1.01      200       37
+#>  alpha[8]    0.00    0.00  0.16  0.13   -0.29    0.28 1.00      167       61
+#>  alpha[9]    0.01    0.02  0.15  0.13   -0.19    0.24 1.06      146       78
+#> 
+#>  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Structure of the fitted object
+
+All wrappers return an object of R6 class “CmdStanMCMC” from
+**cmdstanr**. Let us have a closer look at this one; all other fits
+below have the same structure.
+
+``` r
+
+class(fit)
+#> [1] "CmdStanMCMC" "CmdStanFit"  "R6"
+```
+
+Basic information about the model and the run is available through
+`$metadata()`:
+
+``` r
+
+fit$metadata()$model_name
+#> [1] "ZhengBEM_count_model"
+fit$metadata()$stan_variables
+#> [1] "lp__"        "alpha"       "beta"        "inv_omega"   "mu_beta"    
+#> [6] "sigma_beta"  "sigma_alpha"
+fit$metadata()$iter_sampling
+#> [1] 100
+```
+
+Posterior summaries for all or selected variables:
+
+``` r
+
+fit$summary()
+#> # A tibble: 60 × 10
+#>    variable       mean     median     sd    mad       q5      q95  rhat ess_bulk
+#>    <chr>         <dbl>      <dbl>  <dbl>  <dbl>    <dbl>    <dbl> <dbl>    <dbl>
+#>  1 lp__     -163.        -1.65e+2 13.0   13.5   -181.    -140.    1.10      7.91
+#>  2 alpha[1]    0.0672     5.82e-2  0.177  0.173   -0.208    0.360 1.00    173.  
+#>  3 alpha[2]    0.0774     6.38e-2  0.217  0.242   -0.265    0.393 0.991   159.  
+#>  4 alpha[3]   -0.0741    -6.52e-2  0.159  0.157   -0.355    0.167 1.03    137.  
+#>  5 alpha[4]   -0.0103     7.59e-3  0.173  0.189   -0.323    0.216 0.994   200   
+#>  6 alpha[5]   -0.0288    -1.32e-2  0.166  0.148   -0.305    0.264 1.00    200   
+#>  7 alpha[6]   -0.00453   -2.83e-5  0.145  0.137   -0.274    0.260 1.02    178.  
+#>  8 alpha[7]    0.0162     2.24e-2  0.171  0.135   -0.244    0.313 1.01    200   
+#>  9 alpha[8]   -0.00123   -2.27e-3  0.158  0.130   -0.288    0.280 1.00    167.  
+#> 10 alpha[9]    0.0112     2.23e-2  0.145  0.135   -0.194    0.238 1.06    147.  
+#> # ℹ 50 more rows
+#> # ℹ 1 more variable: ess_tail <dbl>
+fit$summary(variables = c("mu_beta", "sigma_beta", "sigma_alpha"))
+#> # A tibble: 3 × 10
+#>   variable     mean median      sd    mad      q5    q95  rhat ess_bulk ess_tail
+#>   <chr>       <dbl>  <dbl>   <dbl>  <dbl>   <dbl>  <dbl> <dbl>    <dbl>    <dbl>
+#> 1 mu_beta     1.55   0.395  5.21   1.31   -8.64    8.92   1.88     8.38     21.6
+#> 2 sigma_beta  9.78   4.97  12.5    6.42    0.298  39.5    2.08     1.47     21.6
+#> 3 sigma_alpha 0.173  0.173  0.0474 0.0520  0.0982  0.255  1.02    13.6      31.5
+```
+
+The posterior draws themselves are returned by `$draws()` in one of the
+formats supported by the **posterior** package – by default a
+`draws_array` with dimensions iterations x chains x variables:
+
+``` r
+
+draws <- fit$draws()
+class(draws)
+#> [1] "draws_array" "draws"       "array"
+dim(draws)
+#> [1] 100   1  60
+head(fit$draws(format = "df"))
+#> # A draws_df: 6 iterations, 1 chains, and 60 variables
+#>   lp__ alpha[1] alpha[2] alpha[3] alpha[4] alpha[5] alpha[6] alpha[7]
+#> 1 -156   -0.094   -0.097    0.144    0.160  -0.0412   -0.015   0.0058
+#> 2 -165    0.272    0.002   -0.263   -0.032   0.0059   -0.061  -0.0147
+#> 3 -174    0.060    0.357   -0.012    0.043   0.0583   -0.156  -0.0461
+#> 4 -171    0.186    0.132    0.074   -0.377   0.2647   -0.061   0.0259
+#> 5 -167    0.168    0.380   -0.099    0.080  -0.2247    0.082  -0.0683
+#> 6 -158   -0.111   -0.061   -0.154   -0.184  -0.1116    0.086  -0.1760
+#> # ... with 52 more variables
+#> # ... hidden reserved variables {'.chain', '.iteration', '.draw'}
+```
+
+Sampler diagnostics:
+
+``` r
+
+fit$diagnostic_summary()
+#> $num_divergent
+#> [1] 0
+#> 
+#> $num_max_treedepth
+#> [1] 0
+#> 
+#> $ebfmi
+#> [1] 0.3318881
+```
+
+Note that the draws live in CSV files written by CmdStan (see
+`fit$output_files()`) that are by default created in a temporary
+directory and are deleted when the R session ends. Use
+`fit$save_object()` to save the whole fitted object. See
+[`?cmdstanr::CmdStanMCMC`](https://mc-stan.org/cmdstanr/reference/CmdStanMCMC.html)
+for the complete list of methods.
+
+### Count responses (alternative parametrization)
+
+[`zheng_bem_count2()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
+is the same model with a different parametrization of the overdispersion
+parameters and different priors:
+
+``` r
+
+fit <- zheng_bem_count2(
+  N = N,
+  K = K,
+  y = y,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>      variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
+#>  lp__         -260.09 -259.93 6.18 6.76 -270.16 -250.49 1.05       27       52
+#>  alpha_std[1]    0.16    0.30 1.00 1.15   -1.50    1.63 1.03      152       53
+#>  alpha_std[2]    0.21    0.23 0.84 0.79   -1.27    1.56 1.00       90       76
+#>  alpha_std[3]   -0.23   -0.17 0.87 0.78   -1.90    1.16 0.99      133       54
+#>  alpha_std[4]    0.07    0.06 1.00 1.10   -1.64    1.67 0.99      101       78
+#>  alpha_std[5]   -0.14   -0.12 0.98 0.98   -1.71    1.33 1.00      136      113
+#>  alpha_std[6]   -0.06   -0.09 1.16 1.35   -1.73    1.93 1.03      200       32
+#>  alpha_std[7]    0.14    0.15 0.84 0.75   -1.23    1.46 1.00      126       92
+#>  alpha_std[8]   -0.09   -0.09 0.82 0.84   -1.56    1.20 1.00       99       78
+#>  alpha_std[9]   -0.05   -0.18 1.02 0.81   -1.71    2.14 1.00      102       54
+#> 
+#>  # showing 10 of 119 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Dichotomous responses
+
+``` r
+
+fit <- zheng_bem_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable   mean median    sd   mad     q5    q95 rhat ess_bulk ess_tail
+#>  lp__     -71.24 -73.74 16.44 13.89 -91.94 -36.92 1.31        3       21
+#>  alpha[1]   0.33   0.33  0.43  0.34  -0.34   0.98 1.00       68       71
+#>  alpha[2]   0.28   0.25  0.42  0.41  -0.24   0.92 1.13       72       43
+#>  alpha[3]  -0.54  -0.53  0.56  0.55  -1.54   0.22 1.04       33       54
+#>  alpha[4]   0.36   0.37  0.44  0.50  -0.29   1.04 1.00       87       83
+#>  alpha[5]   0.03   0.05  0.50  0.42  -0.74   0.65 1.00      176       64
+#>  alpha[6]   0.00  -0.02  0.50  0.40  -0.71   0.84 1.01      200       71
+#>  alpha[7]  -0.05  -0.07  0.49  0.43  -0.87   0.78 1.00      200      116
+#>  alpha[8]   0.00  -0.05  0.45  0.43  -0.79   0.87 1.02      200       60
+#>  alpha[9]   0.01   0.02  0.52  0.41  -0.78   0.75 1.08      200       25
+#> 
+#>  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Trichotomous responses
+
+``` r
+
+fit <- zheng_bem_trichotomous(
+  N = N,
+  K = K,
+  y = y012,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable    mean  median    sd   mad      q5    q95 rhat ess_bulk ess_tail
+#>  lp__     -122.24 -124.64 16.53 14.63 -142.79 -91.29 1.45        2       12
+#>  alpha[1]    0.24    0.20  0.29  0.31   -0.16   0.68 1.07       25      104
+#>  alpha[2]    0.07    0.07  0.25  0.26   -0.40   0.50 1.03      126       68
+#>  alpha[3]   -0.23   -0.19  0.37  0.30   -0.90   0.33 1.07      162       34
+#>  alpha[4]    0.14    0.12  0.39  0.39   -0.47   0.80 1.04      151       92
+#>  alpha[5]   -0.08   -0.06  0.31  0.21   -0.49   0.28 1.22      105       32
+#>  alpha[6]   -0.12   -0.06  0.38  0.27   -0.79   0.50 1.06      200       76
+#>  alpha[7]   -0.03   -0.02  0.27  0.26   -0.40   0.38 1.00      169       77
+#>  alpha[8]    0.15    0.16  0.40  0.34   -0.41   0.90 1.16      200       28
+#>  alpha[9]   -0.06   -0.03  0.30  0.32   -0.54   0.34 1.04       98       66
+#> 
+#>  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+## Zheng et al (2006) Group Prevalence Model
+
+See
+[`?zheng_gp`](https://coalesce-lab.github.io/stansum/reference/zheng_gp.md).
+
+### Count responses
+
+``` r
+
+fit <- zheng_gp_count(
+  N = N,
+  K = K,
+  y = y,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable   mean median    sd   mad     q5    q95 rhat ess_bulk ess_tail
+#>  lp__     -58.87 -59.24 16.67 16.62 -86.15 -32.96 1.24        3       21
+#>  alpha[1]   0.08   0.08  0.19  0.16  -0.28   0.43 1.01      119       78
+#>  alpha[2]   0.10   0.07  0.25  0.20  -0.16   0.60 1.01      165       18
+#>  alpha[3]  -0.09  -0.09  0.17  0.17  -0.36   0.16 0.99      113       49
+#>  alpha[4]   0.01   0.01  0.22  0.20  -0.32   0.33 1.12      200       14
+#>  alpha[5]  -0.02  -0.02  0.19  0.21  -0.34   0.27 1.06      191       45
+#>  alpha[6]  -0.02  -0.02  0.17  0.18  -0.28   0.25 1.05      200       60
+#>  alpha[7]   0.01   0.02  0.16  0.14  -0.28   0.28 1.07      200       21
+#>  alpha[8]  -0.01  -0.01  0.16  0.15  -0.22   0.26 0.99      200       30
+#>  alpha[9]  -0.03  -0.01  0.19  0.23  -0.32   0.26 1.01      113       30
+#> 
+#>  # showing 10 of 57 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Dichotomous responses
+
+``` r
+
+fit <- zheng_gp_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable   mean median     sd   mad    q5    q95 rhat ess_bulk ess_tail
+#>  lp__     183.56 120.32 122.41 25.08 98.32 415.32 1.81        1       13
+#>  alpha[1]   0.36   0.26   0.67  0.47 -0.65   1.67 1.06       75       46
+#>  alpha[2]   0.36   0.36   0.48  0.44 -0.42   1.20 0.99       74       73
+#>  alpha[3]  -0.60  -0.50   0.59  0.49 -1.57   0.12 1.03       22       71
+#>  alpha[4]   0.31   0.28   0.49  0.41 -0.55   1.04 1.08      106      101
+#>  alpha[5]  -0.01   0.01   0.60  0.55 -1.11   0.89 1.07      200       78
+#>  alpha[6]  -0.03   0.01   0.51  0.37 -0.81   0.55 1.01      126       18
+#>  alpha[7]  -0.03  -0.08   0.64  0.68 -1.16   1.02 0.99      200      113
+#>  alpha[8]  -0.01  -0.07   0.44  0.44 -0.59   0.62 1.01      156       54
+#>  alpha[9]  -0.01  -0.02   0.46  0.40 -0.75   0.72 0.99      200       49
+#> 
+#>  # showing 10 of 57 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+## Maltiel et al (2015) Barrier Effects Model
+
+See
+[`?maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md).
+These models need `m` and `L` in addition to the ARD (the dichotomous
+and trichotomous variants do not use `L`, but accept it for
+consistency).
+
+### Count responses
+
+``` r
+
+fit <- maltiel_bem_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
+#>  lp__     -249.05 -249.30 7.26 8.35 -261.37 -238.90 1.21        4       76
+#>  d_raw[1]   22.79   21.61 7.44 6.54   13.84   35.70 1.09      109       48
+#>  d_raw[2]   21.01   20.93 5.32 5.38   12.76   28.76 0.99      200       66
+#>  d_raw[3]   16.76   16.43 4.42 4.41   10.92   24.48 1.01      128       71
+#>  d_raw[4]   20.85   19.94 5.53 4.73   12.40   29.15 1.06      200       48
+#>  d_raw[5]   19.04   18.30 6.79 6.29   10.39   30.65 1.01      200       92
+#>  d_raw[6]   18.85   18.72 4.89 4.50   12.08   27.95 1.01      174       76
+#>  d_raw[7]   18.90   18.79 4.92 4.56   12.19   27.28 1.01      128       78
+#>  d_raw[8]   19.25   18.35 5.37 5.95   11.80   28.67 1.00      186       77
+#>  d_raw[9]   18.43   17.51 4.75 4.33   13.47   25.59 1.03      120       76
+#> 
+#>  # showing 10 of 106 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Dichotomous responses
+
+``` r
+
+fit <- maltiel_bem_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable    mean  median       sd    mad      q5      q95 rhat ess_bulk
+#>      lp__ -167.84 -165.86    13.42  15.87 -191.98  -149.33 1.31        2
+#>      d[1] 2830.54  274.70 11933.26 352.56   23.86  7639.68 1.14        5
+#>      d[2] 2270.36  251.73  6503.86 322.24   20.32 14474.87 1.07       11
+#>      d[3]  462.61   31.07  3292.09  40.96    2.57   859.13 1.14        4
+#>      d[4] 2568.20  236.15  8236.63 261.66   41.97 11966.32 1.15        4
+#>      d[5] 1209.07  116.25  3312.67 127.45   15.43  7063.54 1.16        4
+#>      d[6] 1278.34  158.68  3809.70 167.65   18.83  5567.41 1.12        6
+#>      d[7] 3486.74  122.85 18814.07 132.11   18.65  9013.45 1.13        6
+#>      d[8] 1907.78  131.54 12245.97 149.84   21.41  3662.41 1.13        5
+#>      d[9] 2370.85  141.08  6634.09 179.63   13.49 11549.72 1.22        5
+#>  ess_tail
+#>        21
+#>        50
+#>       104
+#>        28
+#>        20
+#>        53
+#>        40
+#>        52
+#>        47
+#>        44
+#> 
+#>  # showing 10 of 56 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Trichotomous responses
+
+``` r
+
+fit <- maltiel_bem_trichotomous(
+  N = N,
+  K = K,
+  y = y012,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>  variable    mean  median    sd  mad      q5     q95 rhat ess_bulk ess_tail
+#>      lp__ -174.95 -172.36 11.25 8.13 -198.54 -163.20 1.04       13       30
+#>      d[1]   32.22   30.38 13.25 7.41   20.71   49.67 0.99       77       53
+#>      d[2]   26.78   26.31  8.27 8.74   16.25   40.60 0.99       97       65
+#>      d[3]   23.83   21.45 10.02 7.51   13.03   38.47 1.00      166       78
+#>      d[4]   30.00   28.92 10.10 8.10   17.66   49.19 0.99       77       47
+#>      d[5]   24.76   23.21  8.09 7.40   14.23   39.19 1.06      129       64
+#>      d[6]   26.32   24.61  9.34 7.16   14.53   39.28 1.00      101       16
+#>      d[7]   24.68   22.55  7.82 6.76   16.05   35.19 1.00      141       76
+#>      d[8]   30.01   26.29 16.30 9.42   15.57   49.39 1.05       52       32
+#>      d[9]   25.08   24.67  6.70 6.33   17.00   35.84 1.03       53       73
+#> 
+#>  # showing 10 of 56 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+## Maltiel et al (2015) Random Degree Model
+
+See
+[`?maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md).
+
+### Count responses
+
+``` r
+
+fit <- maltiel_rdm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
+#>  lp__     -227.79 -227.65 5.64 4.92 -238.16 -219.42 1.12        9       30
+#>  d_raw[1]   23.30   23.23 6.08 5.07   14.31   33.76 1.07      120       52
+#>  d_raw[2]   21.43   20.72 5.62 5.84   13.43   30.78 1.04      158      112
+#>  d_raw[3]   17.00   16.51 4.65 4.07    9.39   25.29 1.05      200       71
+#>  d_raw[4]   20.64   20.05 5.18 5.85   13.51   30.04 1.00      200       61
+#>  d_raw[5]   18.73   18.59 5.46 4.40    9.95   29.78 1.00      200      101
+#>  d_raw[6]   18.93   19.17 5.85 5.29   10.50   29.91 0.99      200       90
+#>  d_raw[7]   19.20   18.89 6.21 5.46    9.68   27.46 1.02      200       65
+#>  d_raw[8]   19.57   19.06 4.60 5.05   13.00   27.36 1.00      200      116
+#>  d_raw[9]   18.29   17.38 4.71 4.52   11.80   26.78 1.03      200       78
+#> 
+#>  # showing 10 of 103 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+### Dichotomous responses
+
+``` r
+
+fit <- maltiel_rd_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable    mean  median    sd   mad      q5    q95 rhat ess_bulk ess_tail
+#>      lp__ -104.21 -103.59 12.97 16.88 -125.26 -84.08 1.35        2       17
+#>      d[1]   31.01   27.75 12.59 12.31   16.71  58.50 1.07       60      112
+#>      d[2]   33.83   26.62 25.39 11.54   14.11  56.81 1.18        4       21
+#>      d[3]   17.26   16.97  7.09  6.44    6.13  31.08 1.03       66      112
+#>      d[4]   33.28   27.24 22.41 11.56   14.12  67.84 1.05       28       25
+#>      d[5]   23.92   21.93  9.21  5.76   12.41  44.57 0.99      173       68
+#>      d[6]   24.00   21.95  8.52  8.25   13.63  40.97 0.99      166      101
+#>      d[7]   23.30   21.99  9.05  7.70    9.76  38.48 0.99      200       71
+#>      d[8]   23.12   21.60  8.38  7.82   11.85  38.50 1.07       81       47
+#>      d[9]   23.69   21.88  9.21  6.75   13.07  40.17 1.00      155       76
+#> 
+#>  # showing 10 of 53 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+## References
+
+Baum, Derick S., and Peter V. Marsden. 2023. “Uses and Limitations of
+Dichotomous Aggregate Relational Data.” *Social Networks* 74 (July):
+42–61. <https://doi.org/10.1016/j.socnet.2023.02.001>.
+
+Gabry, Jonah, Rok Češnovar, and Andrew Johnson. 2022. *cmdstanr: R
+Interface to ’CmdStan’*.
+
+Landau, William Michael. 2023. *Instantiate: Pre-Compiled CmdStan Models
+in r Packages*.
+
+Maltiel, Rachael, Adrian E. Raftery, Tyler H. McCormick, and Aaron J.
+Baraff. 2015. “Estimating Population Size Using the Network Scale Up
+Method.” *The Annals of Applied Statistics* 9 (3): 1247–77.
+<https://doi.org/10.1214/15-AOAS827>.
+
+Zheng, Tian, Matthew J. Salganik, and Andrew Gelman. 2006. “How Many
+People Do You Know in Prison? Using Overdispersion in Count Data to
+Estimate Social Structure in Networks.” *Journal of the American
+Statistical Association* 101 (474): 409–23.
+<https://doi.org/10.1198/016214505000001168>.

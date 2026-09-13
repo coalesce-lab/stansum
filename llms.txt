@@ -89,3 +89,9 @@ Statistical Association* 101 (474): 409–23.
   [`zheng_gp_dichotomous()`](https://coalesce-lab.github.io/stansum/reference/zheng_gp.md)
   : Zheng et al (2006) Group Prevalence Model
 
+# Articles
+
+### All vignettes
+
+- [Getting Started with
+  'stansum'](https://coalesce-lab.github.io/stansum/articles/stansum.md):
