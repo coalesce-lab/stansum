@@ -34,6 +34,7 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+VignetteBuilder: knitr
 LazyData: true
 URL: https://coalesce-lab.github.io/stansum/
 Config/roxygen2/version: 8.1.0
