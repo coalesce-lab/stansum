@@ -40,6 +40,9 @@ Useful links:
 
 Authors:
 
+- Michal Bojanowski <michal2992@gmail.com>
+  ([ORCID](https://orcid.org/0000-0001-7503-852X))
+
 - Derick S. Baum <derick_baum@brown.edu>
   ([ORCID](https://orcid.org/0000-0001-7539-6749))
 

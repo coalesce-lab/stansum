@@ -6,6 +6,11 @@ Bayesian model for ARD...
 
 &nbsp;
 
+- `zheng_bem_count2` – model for count responses with different
+  parametrization for omega and different priors
+
+&nbsp;
+
 - `zheng_bem_dichotomous` – model for dichotmous responses proposed by
   Baum & Marsden (2023).
 
@@ -18,6 +23,8 @@ Bayesian model for ARD...
 
 ``` r
 zheng_bem_count(N, K, y, ...)
+
+zheng_bem_count2(N, K, y, ...)
 
 zheng_bem_dichotomous(N, K, y, ...)
 

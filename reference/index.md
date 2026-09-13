@@ -17,6 +17,7 @@
 - [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md)
   : A simple Bernoulli model for testing purposes
 - [`zheng_bem_count()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
+  [`zheng_bem_count2()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
   [`zheng_bem_dichotomous()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
   [`zheng_bem_trichotomous()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
   : Zheng et al (2006) Barrier Effects Model
