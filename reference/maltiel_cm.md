@@ -133,17 +133,17 @@ r <- maltiel_cm_count(
 #> 
 #> Chain 1 Iteration:   1 / 210 [  0%]  (Warmup) 
 #> Chain 1 Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
-#> Chain 1 Exception: beta_lpdf: First shape parameter is 0, but must be positive finite! (in '/tmp/RtmpYtJWLT/model-290e3a5a1207.stan', line 37, column 4 to column 74)
+#> Chain 1 Exception: beta_lpdf: First shape parameter is 0, but must be positive finite! (in '/tmp/RtmpkUMlaH/model-29062f94785e.stan', line 37, column 4 to column 74)
 #> Chain 1 If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
 #> Chain 1 but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
 #> Chain 1 
 #> Chain 1 Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
-#> Chain 1 Exception: beta_lpdf: First shape parameter is 0, but must be positive finite! (in '/tmp/RtmpYtJWLT/model-290e3a5a1207.stan', line 37, column 4 to column 74)
+#> Chain 1 Exception: beta_lpdf: First shape parameter is 0, but must be positive finite! (in '/tmp/RtmpkUMlaH/model-29062f94785e.stan', line 37, column 4 to column 74)
 #> Chain 1 If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
 #> Chain 1 but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
 #> Chain 1 
 #> Chain 1 Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
-#> Chain 1 Exception: beta_lpdf: First shape parameter is 0, but must be positive finite! (in '/tmp/RtmpYtJWLT/model-290e3a5a1207.stan', line 37, column 4 to column 74)
+#> Chain 1 Exception: beta_lpdf: First shape parameter is 0, but must be positive finite! (in '/tmp/RtmpkUMlaH/model-29062f94785e.stan', line 37, column 4 to column 74)
 #> Chain 1 If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
 #> Chain 1 but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
 #> Chain 1 
@@ -151,5 +151,5 @@ r <- maltiel_cm_count(
 #> Chain 1 Iteration: 200 / 210 [ 95%]  (Warmup) 
 #> Chain 1 Iteration: 201 / 210 [ 95%]  (Sampling) 
 #> Chain 1 Iteration: 210 / 210 [100%]  (Sampling) 
-#> Chain 1 finished in 0.3 seconds.
+#> Chain 1 finished in 0.4 seconds.
 ```
