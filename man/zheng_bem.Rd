@@ -3,11 +3,14 @@
 \name{zheng_bem}
 \alias{zheng_bem}
 \alias{zheng_bem_count}
+\alias{zheng_bem_count2}
 \alias{zheng_bem_dichotomous}
 \alias{zheng_bem_trichotomous}
 \title{Zheng et al (2006) Barrier Effects Model}
 \usage{
 zheng_bem_count(N, K, y, ...)
+
+zheng_bem_count2(N, K, y, ...)
 
 zheng_bem_dichotomous(N, K, y, ...)
 
@@ -30,6 +33,10 @@ Bayesian model for ARD...
 
 \itemize{
 \item \code{zheng_bem_count} -- model for count responses
+}
+
+\itemize{
+\item \code{zheng_bem_count2} -- model for count responses with different parametrization for omega and different priors
 }
 
 \itemize{
@@ -64,7 +71,6 @@ Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 Other models in this package:
 \code{\link{maltiel_bem}},
 \code{\link{maltiel_rdm}},
-\code{\link{maltiel_tbm}},
 \code{\link[=test_model]{test_model()}},
 \code{\link{zheng_gp}}
 

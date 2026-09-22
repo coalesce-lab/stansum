@@ -24,7 +24,7 @@ Roxygen: list(markdown = TRUE)
 Depends: 
     R (>= 3.4.0)
 Imports:
-    instantiate
+    instantiate (>= 0.2.3)
 Additional_repositories:
     https://mc-stan.org/r-packages/
 SystemRequirements: CmdStan (https://mc-stan.org/users/interfaces/cmdstan)
@@ -34,8 +34,7 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-Remotes:
-    wlandau/instantiate
+VignetteBuilder: knitr
 LazyData: true
 URL: https://coalesce-lab.github.io/stansum/
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0

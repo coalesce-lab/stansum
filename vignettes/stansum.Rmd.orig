@@ -1,0 +1,443 @@
+---
+title: "Getting Started with 'stansum'"
+output: rmarkdown::html_vignette
+bibliography: refs.bib
+vignette: >
+  %\VignetteIndexEntry{Getting Started with 'stansum'}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+  chunk_output_type: console
+---
+
+<!--
+This vignette is precomputed: edit `stansum.Rmd.orig` and regenerate
+`stansum.Rmd` with `source("vignettes/precompile.R")` from the package root.
+-->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  error = FALSE, # a failed fit must abort precompilation, not be rendered
+  warning = FALSE # the tiny runs below trigger many low-ESS warnings
+)
+```
+
+```{r setup}
+library(stansum)
+```
+
+The **stansum** package wraps a collection of precompiled Stan models for
+Aggregated Relational Data (ARD) proposed by @zheng_etal_2006,
+@maltiel_etal_2015 and @baum_marsden_2023. The models are embedded in the
+package using **instantiate** [@r-instantiate] and sampled with **cmdstanr**
+[@r-cmdstanr].
+
+This vignette fits every model once. The examples are deliberately as
+computationally cheap as possible: they use a small subset of the data and a
+tiny number of MCMC iterations. Their purpose is to show the calling syntax
+and the structure of the fitted objects, **not** to produce meaningful
+estimates.
+
+
+# Listing and loading models
+
+All models shipped with the package are listed by `list_models()`:
+
+```{r list-models}
+list_models()
+```
+
+Use `get_model()` to load one of them as a **cmdstanr** object of R6 class
+"CmdStanModel" without fitting it:
+
+```{r get-model}
+mod <- get_model("ZhengBEM_count")
+class(mod)
+basename(mod$exe_file())
+```
+
+Note that the object is created from the precompiled executable rather than
+a Stan file, so methods that need the source (such as `$print()` or
+`$variables()`) are unavailable. The Stan sources are installed alongside the
+executables:
+
+```{r stan-source}
+stan_file <- system.file("bin", "stan", "ZhengBEM_count.stan", package = "stansum")
+cat(readLines(stan_file), sep = "\n")
+```
+
+The remaining sections use the R wrappers which load the model and sample
+from the posterior in one call.
+
+
+# Example data
+
+All examples use the artificial dataset `Fake_maltiel_RD` shipped with the
+package. It was simulated from the Random Degree model of @maltiel_etal_2015
+for 1000 respondents and three subpopulations of sizes 100000, 200000 and
+300000 in a population of 3 million. See `?Fake` for details.
+
+```{r data}
+data("Fake_maltiel_RD", package = "stansum")
+head(Fake_maltiel_RD)
+```
+
+To keep the computations cheap we use the first 50 respondents only. The
+models expect ARD as a matrix with respondents in rows and subpopulations in
+columns:
+
+```{r data-count}
+y <- data.matrix(Fake_maltiel_RD)[1:50, ]
+N <- nrow(y)
+K <- ncol(y)
+```
+
+Some of the models accept dichotomous (does the respondent know anyone in the
+subpopulation: 0/1) or trichotomous (knows nobody / one person / two or more:
+0/1/2) responses instead of counts [@baum_marsden_2023]. We derive them from
+the counts:
+
+```{r data-dichotomous}
+y01 <- 1L * (y > 0)
+y012 <- pmin(y, 2)
+```
+
+The Maltiel et al (2015) models additionally need `m` -- the vector of
+subpopulation sizes as fractions of the population size -- and `L` -- a
+per-respondent lower bound on the degree. The count models parametrize the
+degree as `L + d_raw` with `d_raw > 0`, so `L` must be at least the largest
+number of people a respondent reported knowing in any subpopulation:
+
+```{r data-maltiel}
+m <- c(1, 2, 3) * 1e5 / 3e6
+L <- apply(y, 1, max)
+```
+
+
+# Sampling settings
+
+Every wrapper passes `...` to the `$sample()` method of the "CmdStanModel"
+object, see `?cmdstanr::``model-method-sample``. All calls below use
+
+- `chains = 1`, `iter_warmup = 100`, `iter_sampling = 100` -- the cheapest
+  settings that still run in a reasonable manner. Real applications require
+  multiple chains and far more iterations.
+- `refresh = 0`, `show_messages = FALSE` and `show_exceptions = FALSE` --
+  suppress progress output and informational messages from Stan.
+- `seed = 666` -- for reproducibility.
+
+With so few iterations the posterior summaries come with warnings about
+unreliable effective sample sizes (ESS). They are expected here and are not
+shown in this vignette.
+
+The arguments are spelled out in every call so that each example is
+self-contained.
+
+
+# A test model
+
+`test_model()` wraps a simple Bernoulli model borrowed from the Stan
+documentation. It is useful for checking that the toolchain works:
+
+```{r test-model}
+y_test <- c(1, 1, 1, 1, 0, 0, 0, 0, 0, 0)
+fit <- test_model(
+  N = length(y_test),
+  y = y_test,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
+# Zheng et al (2006) Barrier Effects Model
+
+See `?zheng_bem`.
+
+## Count responses
+
+```{r zheng-bem-count}
+fit <- zheng_bem_count(
+  N = N,
+  K = K,
+  y = y,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Structure of the fitted object
+
+All wrappers return an object of R6 class "CmdStanMCMC" from **cmdstanr**.
+Let us have a closer look at this one; all other fits below have the same
+structure.
+
+```{r fit-structure-class}
+class(fit)
+```
+
+Basic information about the model and the run is available through
+`$metadata()`:
+
+```{r fit-structure-metadata}
+fit$metadata()$model_name
+fit$metadata()$stan_variables
+fit$metadata()$iter_sampling
+```
+
+Posterior summaries for all or selected variables:
+
+```{r fit-structure-summary}
+fit$summary()
+fit$summary(variables = c("mu_beta", "sigma_beta", "sigma_alpha"))
+```
+
+The posterior draws themselves are returned by `$draws()` in one of the
+formats supported by the **posterior** package -- by default a
+`draws_array` with dimensions iterations x chains x variables:
+
+```{r fit-structure-draws}
+draws <- fit$draws()
+class(draws)
+dim(draws)
+head(fit$draws(format = "df"))
+```
+
+Sampler diagnostics:
+
+```{r fit-structure-diagnostics}
+fit$diagnostic_summary()
+```
+
+Note that the draws live in CSV files written by CmdStan (see
+`fit$output_files()`) that are by default created in a temporary directory
+and are deleted when the R session ends. Use `fit$save_object()` to save the
+whole fitted object. See `?cmdstanr::CmdStanMCMC` for the complete list of
+methods.
+
+## Count responses (alternative parametrization)
+
+`zheng_bem_count2()` is the same model with a different parametrization of
+the overdispersion parameters and different priors:
+
+```{r zheng-bem-count2}
+fit <- zheng_bem_count2(
+  N = N,
+  K = K,
+  y = y,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Dichotomous responses
+
+```{r zheng-bem-dichotomous}
+fit <- zheng_bem_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Trichotomous responses
+
+```{r zheng-bem-trichotomous}
+fit <- zheng_bem_trichotomous(
+  N = N,
+  K = K,
+  y = y012,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
+# Zheng et al (2006) Group Prevalence Model
+
+See `?zheng_gp`.
+
+## Count responses
+
+```{r zheng-gp-count}
+fit <- zheng_gp_count(
+  N = N,
+  K = K,
+  y = y,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Dichotomous responses
+
+```{r zheng-gp-dichotomous}
+fit <- zheng_gp_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
+# Maltiel et al (2015) Barrier Effects Model
+
+See `?maltiel_bem`. These models need `m` and `L` in addition to the ARD
+(the dichotomous and trichotomous variants do not use `L`, but accept it for
+consistency).
+
+## Count responses
+
+```{r maltiel-bem-count}
+fit <- maltiel_bem_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Dichotomous responses
+
+```{r maltiel-bem-dichotomous}
+fit <- maltiel_bem_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Trichotomous responses
+
+```{r maltiel-bem-trichotomous}
+fit <- maltiel_bem_trichotomous(
+  N = N,
+  K = K,
+  y = y012,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
+# Maltiel et al (2015) Random Degree Model
+
+See `?maltiel_rdm`.
+
+## Count responses
+
+```{r maltiel-rdm-count}
+fit <- maltiel_rdm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+## Dichotomous responses
+
+```{r maltiel-rd-dichotomous}
+fit <- maltiel_rd_dichotomous(
+  N = N,
+  K = K,
+  y = y01,
+  m = m,
+  L = L,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
+# References
