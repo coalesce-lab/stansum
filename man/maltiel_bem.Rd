@@ -67,6 +67,7 @@ Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel} without fitting it.
 
 Other models in this package:
+\code{\link{maltiel_cm}},
 \code{\link{maltiel_rdm}},
 \code{\link{maltiel_tbm}},
 \code{\link[=test_model]{test_model()}},
@@ -74,6 +75,7 @@ Other models in this package:
 \code{\link{zheng_gp}}
 
 Other models of Maltiel et al (2015):
+\code{\link{maltiel_cm}},
 \code{\link{maltiel_rdm}},
 \code{\link{maltiel_tbm}}
 }
