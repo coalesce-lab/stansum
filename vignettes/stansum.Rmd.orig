@@ -692,11 +692,13 @@ the Random Degree Model by replacing the prevalence $m_k$ with
 $\tau_k m_k$, where `tau[k]` in (0, 1) is the fraction of the members of
 subpopulation $k$ whose membership is visible to their contacts. Each
 `tau[k]` gets a beta prior with shape parameters `eta[k]` and `v[k]`
-supplied by the user. Since the data alone cannot separate a low `tau[k]`
-from a small `m[k]`, these priors are where knowledge about transmission
-(e.g. from other studies) enters the model: `eta = 1, v = 1` is a uniform
-prior, whereas `eta = 9, v = 1` encodes a belief that about 90% of the
-members are visible.
+supplied by the user. Since the expected counts depend on the product
+$d_i \tau_k m_k$, the data alone cannot separate a low `tau[k]` from a small
+`m[k]`, nor either of them from the degrees: inflating the degrees and
+deflating the biases leaves the fitted counts unchanged. These priors are
+therefore where knowledge about transmission (e.g. from other studies) enters
+the model: `eta = 1, v = 1` is a uniform prior, whereas `eta = 9, v = 1`
+encodes a belief that about 90% of the members are visible.
 
 ## Count responses
 
@@ -738,6 +740,69 @@ larger degrees -- so the posterior of `tau` remains wide. The data were
 simulated with full transmission, i.e. `tau = 1`.
 
 
+# Maltiel et al (2015) Combined Model
+
+See `?maltiel_cm`. This is the model of section 2.4 of @maltiel_etal_2015,
+carrying both the barrier effects of the Barrier Effects Model and the
+transmission bias of the Transmission Bias Model:
+
+$$
+y_{ik} \sim \mathrm{Binomial}(d_i, \tau_k q_{ik}), \qquad
+d_i \sim \mathrm{LogNormal}(\mu, \sigma^2), \qquad
+q_{ik} \sim \mathrm{Beta}(m_k, \rho_k)
+$$
+
+where $\mathrm{Beta}(m_k, \rho_k)$ is parametrized by its mean $m_k$ and
+overdispersion $\rho_k$, as in the Barrier Effects Model. Multiplying
+$q_{ik}$ by $\tau_k$ breaks the beta-binomial conjugacy that
+`maltiel_bem_count()` relies on, so the latent $q_{ik}$ cannot be integrated
+out and are sampled instead. The model therefore has `N * K` more parameters
+than the others and is the slowest in the package.
+
+## Count responses
+
+The inputs are those of the Transmission Bias Model -- `N`, `K`, the count
+matrix `y`, the fractional subpopulation sizes `m`, the degree lower bounds
+`L` and the beta prior shapes `eta` and `v` for the transmission biases --
+followed by the sampling settings. Because the `tau`/degree confounding
+described above applies here too, and because this model has the barrier
+effects to fit as well, we use an informative `Beta(9, 1)` prior (mean 0.9)
+rather than the flat one:
+
+```{r maltiel-cm-count}
+fit <- maltiel_cm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  eta = rep(9, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+The summary is dominated by the `N * K` latent `q` values. The two sets of
+parameters that describe the subpopulations are more informative:
+
+```{r maltiel-cm-count-pars}
+fit$summary(variables = c("tau", "rho"))
+```
+
+`tau` stays close to the prior, as the discussion above leads one to expect,
+and `rho` measures the barrier effects on top of it. With so few iterations
+and this many parameters the sampler has not explored the posterior
+properly; a real fit of this model needs considerably longer runs than the
+other models in this vignette.
+
+
 # Where to go from here
 
 The examples above show the calling syntax and the shape of the results. In
@@ -752,8 +817,9 @@ a real analysis:
 - save the fitted object with `$save_object()` because the underlying CSV
   files are temporary.
 
-The help pages `?zheng_bem`, `?zheng_gp`, `?maltiel_bem`, `?maltiel_rdm` and
-`?maltiel_tbm` document the wrappers and point to the original papers.
+The help pages `?zheng_bem`, `?zheng_gp`, `?maltiel_bem`, `?maltiel_rdm`,
+`?maltiel_tbm` and `?maltiel_cm` document the wrappers and point to the
+original papers.
 
 
 # References
