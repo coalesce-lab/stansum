@@ -31,6 +31,7 @@ Use \code{\link[=get_model]{get_model()}} to return Stan model object of class
 Other models in this package:
 \code{\link{maltiel_bem}},
 \code{\link{maltiel_rdm}},
+\code{\link{maltiel_tbm}},
 \code{\link{zheng_bem}},
 \code{\link{zheng_gp}}
 }
