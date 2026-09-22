@@ -13,17 +13,29 @@ All from the package root. Installing compiles every model in `src/stan/` with C
 ```r
 devtools::document()                 # regenerate NAMESPACE + man/ (never edit those by hand)
 devtools::install()                  # compiles Stan models into bin/stan/ of the installed package
-devtools::test()                     # all tests
-devtools::test(filter = "zheng-bem-count")   # single test file (tests/testthat/test-<filter>.R)
+# tests: run against the INSTALLED package -- devtools::test() / load_all() cannot
+# see bin/stan, so every test calling get_model() errors out. NOT_CRAN un-skips
+# the model tests (devtools would have set it for you).
+Sys.setenv(NOT_CRAN = "true")
+testthat::test_dir("tests/testthat", package = "stansum", load_package = "installed")
+testthat::test_dir("tests/testthat", package = "stansum", load_package = "installed",
+                   filter = "zheng-bem-count")   # single file (tests/testthat/test-<filter>.R)
 devtools::check()                    # R CMD check (CI runs this with --as-cran)
 rmarkdown::render("README.Rmd")      # README.md is generated; edit README.Rmd only
 source("vignettes/precompile.R")     # regenerate the precomputed vignette (see below)
 pkgdown::build_site()                # website
 ```
 
-Shell equivalents: `R CMD INSTALL .`, `R CMD build . && R CMD check --as-cran stansum_*.tar.gz`.
+Shell equivalents: `R CMD INSTALL .`, `R CMD build . && R CMD check --as-cran stansum_*.tar.gz`,
+`NOT_CRAN=true Rscript -e 'testthat::test_dir("tests/testthat", package = "stansum", load_package = "installed")'`.
 
-Model-fitting tests are wrapped in `skip_on_cran()`; run them locally with the package installed.
+Model-fitting tests are wrapped in `skip_on_cran()`, so they only run with `NOT_CRAN=true` set, and they need the
+package installed. Do **not** use `devtools::test()` for them: it loads the package with `pkgload::load_all()`, whose
+`system.file()` shim points at the source tree (there is no `inst/bin/stan`), so `list_models()` comes back empty and
+`get_model()` aborts on its `stopifnot()`. `load_package = "installed"` makes testthat `library(stansum)` instead,
+which resolves `bin/stan` correctly. `filter` is a regex matched against the file name minus `test-` and `.R`, and the
+file names are not consistent (`test-zheng-bem-count.R` with hyphens vs. `test-maltiel_cm_count.R` with underscores),
+so match the actual name.
 
 ## Architecture
 
