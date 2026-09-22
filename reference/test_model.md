@@ -47,6 +47,7 @@ without fitting it.
 
 Other models in this package:
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md),
 [`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md),
 [`zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md),

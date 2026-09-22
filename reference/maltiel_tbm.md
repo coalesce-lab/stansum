@@ -81,6 +81,7 @@ without fitting it.
 
 Other models in this package:
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md),
 [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md),
 [`zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md),
@@ -88,6 +89,7 @@ Other models in this package:
 
 Other models of Maltiel et al (2015):
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md)
 
 ## Examples
@@ -114,5 +116,5 @@ r <- maltiel_tbm_count(
 #> Chain 1 Iteration: 200 / 210 [ 95%]  (Warmup) 
 #> Chain 1 Iteration: 201 / 210 [ 95%]  (Sampling) 
 #> Chain 1 Iteration: 210 / 210 [100%]  (Sampling) 
-#> Chain 1 finished in 9.3 seconds.
+#> Chain 1 finished in 5.6 seconds.
 ```

@@ -79,6 +79,7 @@ without fitting it.
 
 Other models in this package:
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md),
 [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md),
 [`zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md),
@@ -86,4 +87,5 @@ Other models in this package:
 
 Other models of Maltiel et al (2015):
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md)

@@ -5,17 +5,46 @@
 library(stansum)
 ```
 
+## Introduction
+
+Aggregated Relational Data (ARD) are answers to survey questions of the
+form “How many people do you know who are *X*?”, where *X* is a
+subpopulation such as “named Michael”, “are medical doctors”, or “died
+in a car accident last year”. A respondent $`i = 1, \dots, N`$ answers
+such a question for each of $`K`$ subpopulations, and the resulting
+$`N \times K`$ table of counts $`y_{ik}`$ is the input of every model in
+this package. The main quantities of interest are the sizes of the
+personal networks of the respondents (their *degrees*), and – in the
+Network Scale-Up Method (NSUM) – the sizes of subpopulations that are
+hard to count directly. If the sizes of some of the subpopulations are
+known, they anchor the scale of the degrees; a hidden subpopulation can
+then be sized by comparing how many of its members respondents report
+knowing relative to the known ones.
+
 The **stansum** package wraps a collection of precompiled Stan models
-for Aggregated Relational Data (ARD) proposed by Zheng et al. (2006),
-Maltiel et al. (2015) and Baum and Marsden (2023). The models are
-embedded in the package using **instantiate** (Landau 2023) and sampled
-with **cmdstanr** (Gabry et al. 2022).
+for ARD proposed by Zheng et al. (2006), Maltiel et al. (2015) and Baum
+and Marsden (2023). The models are embedded in the package using
+**instantiate** (Landau 2023) and sampled with **cmdstanr** (Gabry et
+al. 2022). Two model families are covered:
+
+- the overdispersed Poisson models of Zheng et al. (2006), in which
+  degrees and subpopulation prevalences enter through log-linear
+  respondent and subpopulation effects;
+- the models of Maltiel et al. (2015), in which degrees are explicit
+  parameters with a lognormal prior and the counts are binomial or
+  beta-binomial.
+
+Most models come in a *count* version, which uses the answers as they
+are, and in *dichotomous* (knows anyone in the subpopulation or not) and
+*trichotomous* (nobody / one person / two or more) versions proposed by
+Baum and Marsden (2023) for surveys that collect coarsened answers.
 
 This vignette fits every model once. The examples are deliberately as
 computationally cheap as possible: they use a small subset of the data
 and a tiny number of MCMC iterations. Their purpose is to show the
-calling syntax and the structure of the fitted objects, **not** to
-produce meaningful estimates.
+calling syntax, the structure of the fitted objects, and give a flavor
+of how to interpret the results – **not** to produce meaningful
+estimates.
 
 ## Listing and loading models
 
@@ -28,15 +57,22 @@ list_models()
 #>  [1] "bernoulli"               "CovMod_count"           
 #>  [3] "CovMod_dichotomous"      "MaltielBEM_count"       
 #>  [5] "MaltielBEM_dichotomous"  "MaltielBEM_trichotomous"
-#>  [7] "MaltielRDM_count"        "MaltielRDM_dichotomous" 
-#>  [9] "ZhengBEM_count"          "ZhengBEM_count2"        
-#> [11] "ZhengBEM_dichotomous"    "ZhengBEM_trichotomous"  
-#> [13] "ZhengGP_count"           "ZhengGP_dichotomous"
+#>  [7] "MaltielCM_count"         "MaltielRDM_count"       
+#>  [9] "MaltielRDM_dichotomous"  "MaltielTBM_count"       
+#> [11] "ZhengBEM_count"          "ZhengBEM_count2"        
+#> [13] "ZhengBEM_dichotomous"    "ZhengBEM_trichotomous"  
+#> [15] "ZhengGP_count"           "ZhengGP_dichotomous"
 ```
+
+The names are the base names of the Stan files. Each model has an R
+wrapper named after it in lowercase,
+e.g. [`zheng_bem_count()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
+for `ZhengBEM_count`. (The `CovMod_*` models and the `bernoulli` test
+model are also listed; the former do not have R wrappers yet.)
 
 Use
 [`get_model()`](https://coalesce-lab.github.io/stansum/reference/get_model.md)
-to load one of them as a **cmdstanr** object of R6 class “CmdStanModel”
+to load a model as a **cmdstanr** object of R6 class “CmdStanModel”
 without fitting it:
 
 ``` r
@@ -89,6 +125,12 @@ cat(readLines(stan_file), sep = "\n")
 #> }
 ```
 
+The source is the definitive description of a model: the `data` block
+lists the inputs the model expects (and the R wrapper has one argument
+for each of them, with the same name), the `parameters` block lists what
+will show up in the posterior summaries, and the `model` block spells
+out the priors and the likelihood.
+
 The remaining sections use the R wrappers which load the model and
 sample from the posterior in one call.
 
@@ -96,8 +138,12 @@ sample from the posterior in one call.
 
 All examples use the artificial dataset `Fake_maltiel_RD` shipped with
 the package. It was simulated from the Random Degree model of Maltiel et
-al. (2015) for 1000 respondents and three subpopulations of sizes
-100000, 200000 and 300000 in a population of 3 million. See
+al. (2015) (see below) for 1000 respondents and three subpopulations of
+sizes 100000, 200000 and 300000 in a population of 3 million. The
+degrees were drawn from a lognormal distribution with a median of about
+20. In a real survey the subpopulations would be chosen so that their
+sizes are known from a census or a register – these known sizes are what
+pin down the scale of the degree estimates. See
 [`?Fake`](https://coalesce-lab.github.io/stansum/reference/Fake.md) for
 details.
 
@@ -114,9 +160,10 @@ head(Fake_maltiel_RD)
 #> 6  0  3  1
 ```
 
-To keep the computations cheap we use the first 50 respondents only. The
-models expect ARD as a matrix with respondents in rows and
-subpopulations in columns:
+To keep the computations cheap we use the first 50 respondents only. All
+models take the ARD as an integer matrix `y` with respondents in rows
+and subpopulations in columns, together with its dimensions `N` (number
+of respondents) and `K` (number of subpopulations):
 
 ``` r
 
@@ -125,10 +172,16 @@ N <- nrow(y)
 K <- ncol(y)
 ```
 
+The count models skip cells with negative values, so a missing answer
+can be encoded as, say, `-1` rather than `NA` (which Stan does not
+accept).
+
 Some of the models accept dichotomous (does the respondent know anyone
 in the subpopulation: 0/1) or trichotomous (knows nobody / one person /
 two or more: 0/1/2) responses instead of counts (Baum and Marsden 2023).
-We derive them from the counts:
+Such data arise when the questionnaire only asks “Do you know anyone
+who…?” or offers a small number of answer categories. We derive them
+from the counts:
 
 ``` r
 
@@ -136,12 +189,15 @@ y01 <- 1L * (y > 0)
 y012 <- pmin(y, 2)
 ```
 
-The Maltiel et al (2015) models additionally need `m` – the vector of
-subpopulation sizes as fractions of the population size – and `L` – a
-per-respondent lower bound on the degree. The count models parametrize
-the degree as `L + d_raw` with `d_raw > 0`, so `L` must be at least the
-largest number of people a respondent reported knowing in any
-subpopulation:
+The Maltiel et al (2015) models additionally need
+
+- `m` – a vector of length `K` with the sizes of the subpopulations as
+  fractions of the population size, hence numbers in (0, 1);
+- `L` – a vector of length `N` with a lower bound on the degree of each
+  respondent. The count models parametrize the degree as `L + d_raw`
+  with `d_raw > 0`, so `L[i]` must be at least the largest number of
+  people respondent `i` reported knowing in any subpopulation. Using
+  exactly that maximum is the natural choice:
 
 ``` r
 
@@ -155,25 +211,35 @@ Every wrapper passes `...` to the `$sample()` method of the
 “CmdStanModel” object, see \`?cmdstanr::`model-method-sample`. All calls
 below use
 
-- `chains = 1`, `iter_warmup = 100`, `iter_sampling = 100` – the
-  cheapest settings that still run in a reasonable manner. Real
-  applications require multiple chains and far more iterations.
+- `chains = 1`, `iter_warmup = 100`, `iter_sampling = 100` – one Markov
+  chain, 100 iterations of warmup (adaptation of the sampler; these
+  draws are discarded) and 100 iterations retained as posterior draws.
+  These are the cheapest settings that still run in a reasonable manner.
+  Real applications require multiple chains (e.g. the **cmdstanr**
+  default of 4, which can be run concurrently with `parallel_chains`)
+  and far more iterations (hundreds to thousands of each kind) so that
+  convergence can be assessed and the posterior summaries are precise.
 - `refresh = 0`, `show_messages = FALSE` and `show_exceptions = FALSE` –
-  suppress progress output and informational messages from Stan.
-- `seed = 666` – for reproducibility.
+  suppress progress output and informational messages from Stan. Leave
+  them at their defaults when working interactively; the messages are
+  useful.
+- `seed = 666` – for reproducibility of the random draws.
 
 With so few iterations the posterior summaries come with warnings about
 unreliable effective sample sizes (ESS). They are expected here and are
 not shown in this vignette.
 
 The arguments are spelled out in every call so that each example is
-self-contained.
+self-contained; the text refers to them collectively as “the sampling
+settings”.
 
 ## A test model
 
 [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md)
 wraps a simple Bernoulli model borrowed from the Stan documentation. It
-is useful for checking that the toolchain works:
+is useful for checking that the toolchain works. Its inputs are `N`, the
+number of binary observations, and `y`, the vector of those
+observations. The remaining arguments are the sampling settings:
 
 ``` r
 
@@ -195,12 +261,40 @@ fit
 #>     theta  0.47   0.51 0.14 0.15   0.24  0.69 1.00       57       78
 ```
 
+Printing a fitted object shows a summary of the posterior. The only
+model parameter is `theta`, the probability of success, and its
+posterior mean is close to the sample proportion of 0.4 (the `lp__` row
+is the log posterior density up to a constant, useful for diagnostics
+but not a parameter).
+
 ## Zheng et al (2006) Barrier Effects Model
 
 See
 [`?zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md).
+In this model the count $`y_{ik}`$ is negative binomial with mean
+$`\exp(\alpha_i + \beta_k)`$, where
+
+- `alpha[i]` is a respondent effect, the log degree of respondent $`i`$
+  up to an additive constant (higher values = more gregarious
+  respondents),
+- `beta[k]` is a subpopulation effect, the log prevalence of
+  subpopulation $`k`$ up to the same constant,
+- `inv_omega[k]` in (0, 1\] is the inverse of the overdispersion of
+  subpopulation $`k`$: the variance of the counts is $`\omega_k`$ times
+  the mean, so `inv_omega[k]` close to 1 means Poisson-like counts,
+  while small values mean that some respondents know many more members
+  of subpopulation $`k`$ than their degree alone would suggest – a
+  *barrier effect* (social structure that concentrates ties to a
+  subpopulation among some people).
+
+The hyperparameters `mu_beta` and `sigma_beta` describe the distribution
+of the subpopulation effects and `sigma_alpha` the spread of the
+respondent effects.
 
 ### Count responses
+
+The inputs are `N` and `K`, the dimensions of the ARD, and `y`, the
+matrix of counts. The remaining arguments are the sampling settings:
 
 ``` r
 
@@ -218,7 +312,7 @@ fit <- zheng_bem_count(
 )
 fit
 #>  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail
-#>  lp__     -163.26 -164.74 13.02 13.47 -181.31 -139.61 1.10        7       21
+#>  lp__     -163.26 -164.74 13.02 13.47 -181.32 -139.61 1.10        7       21
 #>  alpha[1]    0.07    0.06  0.18  0.17   -0.21    0.36 1.00      172       78
 #>  alpha[2]    0.08    0.06  0.22  0.24   -0.26    0.39 0.99      159       52
 #>  alpha[3]   -0.07   -0.07  0.16  0.16   -0.36    0.17 1.03      137      112
@@ -231,6 +325,11 @@ fit
 #> 
 #>  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
+
+The printed summary is truncated to the first 10 of the 60 rows (the
+`max_rows` argument of the print method controls this), so with 50
+respondents we only see some of the `alpha`s. The `$summary()` method
+described next gives access to any subset.
 
 ### Structure of the fitted object
 
@@ -245,7 +344,8 @@ class(fit)
 ```
 
 Basic information about the model and the run is available through
-`$metadata()`:
+`$metadata()`, e.g. the model name, the names of all variables in the
+posterior, and the number of sampling iterations:
 
 ``` r
 
@@ -258,7 +358,9 @@ fit$metadata()$iter_sampling
 #> [1] 100
 ```
 
-Posterior summaries for all or selected variables:
+Posterior summaries for all or selected variables are computed by
+`$summary()`. Vector parameters such as `alpha` are expanded to one row
+per element, and asking for `"alpha"` returns all of them:
 
 ``` r
 
@@ -287,6 +389,16 @@ fit$summary(variables = c("mu_beta", "sigma_beta", "sigma_alpha"))
 #> 3 sigma_alpha 0.173  0.173  0.0474 0.0520  0.0982  0.255  1.02    13.6      31.5
 ```
 
+Each row gives the posterior mean and median, the standard deviation and
+the median absolute deviation, and the 5th and 95th percentiles (a 90%
+credible interval) of a variable. The last three columns are convergence
+diagnostics: `rhat` compares the chains (and parts of chains) with each
+other and should be close to 1 (values above 1.01 are a warning sign),
+and `ess_bulk` and `ess_tail` are the effective numbers of independent
+draws behind the estimate of the center and the tails of the posterior,
+respectively. With 100 draws from one chain these numbers are of course
+tiny; in a real analysis one expects several hundred at least.
+
 The posterior draws themselves are returned by `$draws()` in one of the
 formats supported by the **posterior** package – by default a
 `draws_array` with dimensions iterations x chains x variables:
@@ -311,7 +423,17 @@ head(fit$draws(format = "df"))
 #> # ... hidden reserved variables {'.chain', '.iteration', '.draw'}
 ```
 
-Sampler diagnostics:
+The data frame format (`format = "df"`) is the most convenient one for
+computing derived quantities: every row is one draw of all parameters,
+so any function of the parameters can be evaluated draw by draw and
+summarised afterwards, which propagates the posterior uncertainty
+correctly.
+
+Sampler diagnostics – the number of divergent transitions, the number of
+iterations that hit the maximum tree depth, and the energy-based
+diagnostic E-BFMI – are returned by `$diagnostic_summary()`. Divergences
+in particular indicate that the sampler struggled and the draws may be
+biased:
 
 ``` r
 
@@ -323,7 +445,7 @@ fit$diagnostic_summary()
 #> [1] 0
 #> 
 #> $ebfmi
-#> [1] 0.3318881
+#> [1] 0.3318877
 ```
 
 Note that the draws live in CSV files written by CmdStan (see
@@ -333,11 +455,68 @@ directory and are deleted when the R session ends. Use
 [`?cmdstanr::CmdStanMCMC`](https://mc-stan.org/cmdstanr/reference/CmdStanMCMC.html)
 for the complete list of methods.
 
+### Interpreting the fit
+
+Because the mean of the counts depends on `alpha[i] + beta[k]` only, the
+model cannot tell how much of that sum is due to the respondent and how
+much to the subpopulation: adding a constant to all `alpha`s and
+subtracting it from all `beta`s leaves the likelihood unchanged. The
+priors center the `alpha`s at zero, which fixes the scale arbitrarily.
+Zheng et al. (2006) pin it down using the known subpopulation sizes: the
+prevalences `exp(beta[k])` of the known subpopulations should add up to
+their known combined share of the population. In our data all three
+subpopulations are known, so the shift `C` is the log of the ratio of
+the estimated combined share `sum(exp(beta))` to the known one `sum(m)`;
+subtracting it from the `beta`s makes them log prevalences and adding it
+to the `alpha`s makes them log degrees, `exp(alpha + C)`:
+
+``` r
+
+beta_hat <- fit$summary("beta")$mean
+alpha_hat <- fit$summary("alpha")$mean
+C <- log(sum(exp(beta_hat))) - log(sum(m))
+degree <- exp(alpha_hat + C)
+summary(degree)
+#>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#>   19.19   20.45   21.27   21.18   21.98   23.96
+```
+
+This is a quick point estimate based on posterior means; a proper
+analysis applies the same computation to every draw in
+`fit$draws(format = "df")` to obtain full posterior distributions of the
+degrees. (The data were simulated with a median degree of about 20, so
+even this toy run gets the order of magnitude right.) The overdispersion
+parameters tell whether there are barrier effects with respect to any of
+the subpopulations:
+
+``` r
+
+fit$summary("inv_omega")
+#> # A tibble: 3 × 10
+#>   variable      mean median     sd    mad    q5   q95  rhat ess_bulk ess_tail
+#>   <chr>        <dbl>  <dbl>  <dbl>  <dbl> <dbl> <dbl> <dbl>    <dbl>    <dbl>
+#> 1 inv_omega[1] 0.791  0.798 0.100  0.108  0.607 0.916  1.10    25.8      33.2
+#> 2 inv_omega[2] 0.876  0.912 0.0909 0.0735 0.706 0.966  1.25     3.74     48.4
+#> 3 inv_omega[3] 0.857  0.875 0.0772 0.0793 0.726 0.952  1.05    31.0     111.
+```
+
+The data were simulated without barrier effects, so `inv_omega` should
+be close to 1 for all three subpopulations, but with 100 draws the
+estimates are noisy.
+
 ### Count responses (alternative parametrization)
 
 [`zheng_bem_count2()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
-is the same model with a different parametrization of the overdispersion
-parameters and different priors:
+fits the same likelihood with a different parametrization and different
+priors. The respondent and subpopulation effects are sampled as
+standardized deviations (`alpha_std`, `beta_std`) and scaled afterwards,
+which typically makes the sampler more efficient for hierarchical
+models; the overdispersion is parametrized as `eta[k] = omega[k] - 1`
+with a gamma prior; and the hyperparameters get weakly informative
+normal priors. `alpha`, `beta`, `omega` and `inv_omega` are computed as
+transformed parameters and generated quantities, so the summaries are
+directly comparable with the previous fit. The inputs are the same: `N`,
+`K` and the count matrix `y`, followed by the sampling settings:
 
 ``` r
 
@@ -356,7 +535,7 @@ fit <- zheng_bem_count2(
 fit
 #>      variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
 #>  lp__         -260.09 -259.93 6.18 6.76 -270.16 -250.49 1.05       27       52
-#>  alpha_std[1]    0.16    0.30 1.00 1.15   -1.50    1.63 1.03      152       53
+#>  alpha_std[1]    0.16    0.30 1.00 1.15   -1.50    1.63 1.02      152       53
 #>  alpha_std[2]    0.21    0.23 0.84 0.79   -1.27    1.56 1.00       90       76
 #>  alpha_std[3]   -0.23   -0.17 0.87 0.78   -1.90    1.16 0.99      133       54
 #>  alpha_std[4]    0.07    0.06 1.00 1.10   -1.64    1.67 0.99      101       78
@@ -370,6 +549,14 @@ fit
 ```
 
 ### Dichotomous responses
+
+For dichotomous data the model only uses the probabilities, implied by
+the same negative binomial distribution, of reporting nobody versus at
+least one person in each subpopulation. The parameters and their
+interpretation are as for the count model, but only the “knows nobody”
+versus “knows someone” contrast is informative, so the degree scale is
+estimated much less precisely (Baum and Marsden 2023). The inputs are
+`N`, `K` and the 0/1 matrix `y01`, followed by the sampling settings:
 
 ``` r
 
@@ -389,21 +576,26 @@ fit <- zheng_bem_dichotomous(
 #> See https://mc-stan.org/misc/warnings for details.
 fit
 #>  variable   mean median    sd   mad     q5    q95 rhat ess_bulk ess_tail
-#>  lp__     -71.24 -73.74 16.44 13.89 -91.94 -36.92 1.31        3       21
-#>  alpha[1]   0.33   0.33  0.43  0.34  -0.34   0.98 1.00       68       71
-#>  alpha[2]   0.28   0.25  0.42  0.41  -0.24   0.92 1.13       72       43
-#>  alpha[3]  -0.54  -0.53  0.56  0.55  -1.54   0.22 1.04       33       54
-#>  alpha[4]   0.36   0.37  0.44  0.50  -0.29   1.04 1.00       87       83
-#>  alpha[5]   0.03   0.05  0.50  0.42  -0.74   0.65 1.00      176       64
-#>  alpha[6]   0.00  -0.02  0.50  0.40  -0.71   0.84 1.01      200       71
-#>  alpha[7]  -0.05  -0.07  0.49  0.43  -0.87   0.78 1.00      200      116
-#>  alpha[8]   0.00  -0.05  0.45  0.43  -0.79   0.87 1.02      200       60
-#>  alpha[9]   0.01   0.02  0.52  0.41  -0.78   0.75 1.08      200       25
+#>  lp__     -62.87 -65.27 20.23 21.34 -90.63 -24.71 1.24        3       21
+#>  alpha[1]   0.28   0.21  0.52  0.43  -0.46   1.05 1.05       77       78
+#>  alpha[2]   0.27   0.21  0.47  0.33  -0.41   1.17 1.10        7       48
+#>  alpha[3]  -0.44  -0.37  0.45  0.46  -1.14   0.19 1.09        7       68
+#>  alpha[4]   0.23   0.17  0.54  0.50  -0.51   1.07 1.01      105       65
+#>  alpha[5]  -0.06  -0.04  0.49  0.33  -0.90   0.73 1.09      137       35
+#>  alpha[6]  -0.02  -0.02  0.37  0.29  -0.58   0.54 1.02      195       30
+#>  alpha[7]  -0.06  -0.05  0.47  0.46  -0.79   0.67 1.10      200       31
+#>  alpha[8]   0.02   0.01  0.36  0.32  -0.51   0.71 1.04      200       54
+#>  alpha[9]  -0.04  -0.01  0.45  0.40  -0.87   0.72 1.20      200       73
 #> 
 #>  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
 
 ### Trichotomous responses
+
+The trichotomous model additionally distinguishes knowing exactly one
+person from knowing two or more, which recovers some of the information
+lost when dichotomizing. The inputs are `N`, `K` and the 0/1/2 matrix
+`y012`, followed by the sampling settings:
 
 ``` r
 
@@ -423,16 +615,16 @@ fit <- zheng_bem_trichotomous(
 #> See https://mc-stan.org/misc/warnings for details.
 fit
 #>  variable    mean  median    sd   mad      q5    q95 rhat ess_bulk ess_tail
-#>  lp__     -122.24 -124.64 16.53 14.63 -142.79 -91.29 1.45        2       12
-#>  alpha[1]    0.24    0.20  0.29  0.31   -0.16   0.68 1.07       25      104
-#>  alpha[2]    0.07    0.07  0.25  0.26   -0.40   0.50 1.03      126       68
-#>  alpha[3]   -0.23   -0.19  0.37  0.30   -0.90   0.33 1.07      162       34
-#>  alpha[4]    0.14    0.12  0.39  0.39   -0.47   0.80 1.04      151       92
-#>  alpha[5]   -0.08   -0.06  0.31  0.21   -0.49   0.28 1.22      105       32
-#>  alpha[6]   -0.12   -0.06  0.38  0.27   -0.79   0.50 1.06      200       76
-#>  alpha[7]   -0.03   -0.02  0.27  0.26   -0.40   0.38 1.00      169       77
-#>  alpha[8]    0.15    0.16  0.40  0.34   -0.41   0.90 1.16      200       28
-#>  alpha[9]   -0.06   -0.03  0.30  0.32   -0.54   0.34 1.04       98       66
+#>  lp__     -114.42 -123.43 27.24 16.14 -143.97 -56.96 1.17        5       16
+#>  alpha[1]    0.21    0.17  0.34  0.30   -0.24   0.74 1.07       15      101
+#>  alpha[2]    0.02    0.05  0.24  0.18   -0.40   0.38 1.02      130       76
+#>  alpha[3]   -0.26   -0.19  0.35  0.23   -0.96   0.10 1.05       24       21
+#>  alpha[4]    0.06    0.01  0.27  0.27   -0.36   0.52 1.01      179       78
+#>  alpha[5]   -0.07   -0.04  0.29  0.22   -0.54   0.42 1.05      190       51
+#>  alpha[6]   -0.08   -0.03  0.36  0.31   -0.69   0.43 1.15       95       22
+#>  alpha[7]   -0.04   -0.03  0.29  0.23   -0.51   0.44 1.14      195       19
+#>  alpha[8]    0.05    0.02  0.37  0.24   -0.47   0.48 0.99      115       44
+#>  alpha[9]   -0.06   -0.03  0.32  0.28   -0.65   0.36 1.04      189       71
 #> 
 #>  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
@@ -441,8 +633,18 @@ fit
 
 See
 [`?zheng_gp`](https://coalesce-lab.github.io/stansum/reference/zheng_gp.md).
+This is the Poisson special case of the Barrier Effects Model: the
+counts $`y_{ik}`$ are Poisson with mean $`\exp(\alpha_i + \beta_k)`$ and
+there are no overdispersion parameters. `alpha`, `beta`, `mu_beta`,
+`sigma_beta` and `sigma_alpha` have the same meaning as before and the
+rescaling of the previous section applies unchanged. Comparing this fit
+with the Barrier Effects Model is one way of judging whether
+overdispersion matters for a given dataset.
 
 ### Count responses
+
+The inputs are `N`, `K` and the count matrix `y`, followed by the
+sampling settings:
 
 ``` r
 
@@ -477,6 +679,10 @@ fit
 ```
 
 ### Dichotomous responses
+
+The dichotomous version uses the Poisson probability of a zero count
+versus a positive one. The inputs are `N`, `K` and the 0/1 matrix `y01`,
+followed by the sampling settings:
 
 ``` r
 
@@ -514,11 +720,31 @@ fit
 
 See
 [`?maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md).
-These models need `m` and `L` in addition to the ARD (the dichotomous
-and trichotomous variants do not use `L`, but accept it for
-consistency).
+The models of Maltiel et al. (2015) treat the degrees as parameters
+directly: `d[i]` is the degree of respondent $`i`$, and the degrees
+follow a lognormal distribution with parameters `mu` and `sigma` (on the
+log scale, with uniform priors on (3, 8) and (1/4, 2), respectively).
+Given the degree, the count $`y_{ik}`$ is the number of “successes”
+among $`d_i`$ contacts, each of whom belongs to subpopulation $`k`$ with
+probability related to its known prevalence $`m_k`$. In the Barrier
+Effects Model that probability varies between respondents around $`m_k`$
+according to a beta distribution, which makes the counts beta-binomial.
+The spread of that distribution is governed by `rho[k]` in (0, 1):
+`rho[k]` close to 0 means no barrier effect (the counts are binomial, as
+in the Random Degree Model below), larger values mean stronger barrier
+effects with respect to subpopulation $`k`$.
+
+Because the degrees are explicit parameters, no rescaling is needed:
+`fit$summary("d")` directly gives posterior summaries of the degree of
+every respondent, and `exp(mu + sigma^2 / 2)` is the mean degree in the
+population.
 
 ### Count responses
+
+The inputs are `N`, `K` and the count matrix `y` as before, together
+with `m`, the fractional sizes of the subpopulations, and `L`, the
+per-respondent lower bounds on the degrees. The remaining arguments are
+the sampling settings:
 
 ``` r
 
@@ -544,7 +770,7 @@ fit
 #>  d_raw[3]   16.76   16.43 4.42 4.41   10.92   24.48 1.01      128       71
 #>  d_raw[4]   20.85   19.94 5.53 4.73   12.40   29.15 1.06      200       48
 #>  d_raw[5]   19.04   18.30 6.79 6.29   10.39   30.65 1.01      200       92
-#>  d_raw[6]   18.85   18.72 4.89 4.50   12.08   27.95 1.01      174       76
+#>  d_raw[6]   18.85   18.72 4.89 4.50   12.08   27.95 1.00      174       76
 #>  d_raw[7]   18.90   18.79 4.92 4.56   12.19   27.28 1.01      128       78
 #>  d_raw[8]   19.25   18.35 5.37 5.95   11.80   28.67 1.00      186       77
 #>  d_raw[9]   18.43   17.51 4.75 4.33   13.47   25.59 1.03      120       76
@@ -552,7 +778,46 @@ fit
 #>  # showing 10 of 106 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
 
+A quick look at the degree distribution and the barrier effect
+parameters:
+
+``` r
+
+fit$summary(variables = c("mu", "sigma", "rho"))
+#> # A tibble: 5 × 10
+#>   variable    mean  median      sd     mad        q5    q95  rhat ess_bulk
+#>   <chr>      <dbl>   <dbl>   <dbl>   <dbl>     <dbl>  <dbl> <dbl>    <dbl>
+#> 1 mu       3.08    3.06    0.0617  0.0584  3.00      3.19   0.992    20.9 
+#> 2 sigma    0.291   0.278   0.0445  0.0412  0.250     0.384  1.66      1.79
+#> 3 rho[1]   0.0184  0.0148  0.0130  0.0122  0.00461   0.0434 1.07     10.5 
+#> 4 rho[2]   0.00424 0.00167 0.00553 0.00243 0.0000137 0.0161 1.41      2.47
+#> 5 rho[3]   0.00745 0.00393 0.00813 0.00481 0.000404  0.0221 0.998    15.0 
+#> # ℹ 1 more variable: ess_tail <dbl>
+head(fit$summary("d"))
+#> # A tibble: 6 × 10
+#>   variable  mean median    sd   mad    q5   q95  rhat ess_bulk ess_tail
+#>   <chr>    <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>    <dbl>    <dbl>
+#> 1 d[1]      25.8   24.6  7.44  6.54  16.8  38.7 1.09      110.     48.4
+#> 2 d[2]      26.0   25.9  5.32  5.38  17.8  33.8 0.993     200      67.0
+#> 3 d[3]      18.8   18.4  4.42  4.41  12.9  26.5 1.01      128.     71.3
+#> 4 d[4]      22.9   21.9  5.53  4.73  14.4  31.2 1.06      200      48.2
+#> 5 d[5]      21.0   20.3  6.79  6.29  12.4  32.6 1.01      200      92.6
+#> 6 d[6]      21.8   21.7  4.89  4.50  15.1  31.0 1.00      174.     76.8
+```
+
+The data were simulated with `mu = 3`, which is also the lower bound of
+the prior on `mu`, so the posterior piles up against that bound;
+likewise the true `sigma` (1/16) is below the lower limit of its prior,
+and `rho` should be small since the data contain no barrier effects.
+
 ### Dichotomous responses
+
+The dichotomous version uses the beta-binomial probabilities of knowing
+nobody versus at least one person. It does not constrain the degrees
+from below, so `L` is not used by the Stan model, but the wrapper
+accepts it for consistency with the count version. The inputs are `N`,
+`K`, the 0/1 matrix `y01`, `m` and `L`, followed by the sampling
+settings:
 
 ``` r
 
@@ -574,32 +839,36 @@ fit <- maltiel_bem_dichotomous(
 #> See https://mc-stan.org/misc/warnings for details.
 fit
 #>  variable    mean  median       sd    mad      q5      q95 rhat ess_bulk
-#>      lp__ -167.84 -165.86    13.42  15.87 -191.98  -149.33 1.31        2
-#>      d[1] 2830.54  274.70 11933.26 352.56   23.86  7639.68 1.14        5
-#>      d[2] 2270.36  251.73  6503.86 322.24   20.32 14474.87 1.07       11
-#>      d[3]  462.61   31.07  3292.09  40.96    2.57   859.13 1.14        4
-#>      d[4] 2568.20  236.15  8236.63 261.66   41.97 11966.32 1.15        4
-#>      d[5] 1209.07  116.25  3312.67 127.45   15.43  7063.54 1.16        4
-#>      d[6] 1278.34  158.68  3809.70 167.65   18.83  5567.41 1.12        6
-#>      d[7] 3486.74  122.85 18814.07 132.11   18.65  9013.45 1.13        6
-#>      d[8] 1907.78  131.54 12245.97 149.84   21.41  3662.41 1.13        5
-#>      d[9] 2370.85  141.08  6634.09 179.63   13.49 11549.72 1.22        5
+#>      lp__ -157.50 -155.50    21.44  25.39 -187.77  -120.78 1.84        1
+#>      d[1] 2389.41  144.58  6436.69 165.79   32.40 10601.21 1.82        1
+#>      d[2] 2074.20  135.77  4486.31 137.73   27.14 11874.01 1.77        1
+#>      d[3]  263.37   31.71   784.62  28.39    7.10  1303.60 1.38        2
+#>      d[4] 2166.86  176.88  8759.35 214.32   23.82  5225.35 1.78        1
+#>      d[5]  695.97  127.00  1460.25 146.43   20.16  2860.69 1.74        1
+#>      d[6] 1268.28   82.30  4986.20  87.35   21.76  3608.46 1.76        1
+#>      d[7] 1186.33  133.84  2845.13 164.42   13.57  6174.97 1.62        1
+#>      d[8] 1688.52  109.80  7120.70 108.02   17.14  4844.39 1.51        2
+#>      d[9] 2044.52  113.38 10057.82 127.52   14.18  8392.27 1.61        1
 #>  ess_tail
-#>        21
-#>        50
-#>       104
-#>        28
-#>        20
-#>        53
-#>        40
-#>        52
-#>        47
-#>        44
+#>        32
+#>        30
+#>        33
+#>        48
+#>        31
+#>        73
+#>        32
+#>        38
+#>        60
+#>        60
 #> 
 #>  # showing 10 of 56 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
 
 ### Trichotomous responses
+
+The trichotomous version distinguishes nobody / one person / two or more
+and, like the dichotomous one, ignores `L`. The inputs are `N`, `K`, the
+0/1/2 matrix `y012`, `m` and `L`, followed by the sampling settings:
 
 ``` r
 
@@ -618,17 +887,17 @@ fit <- maltiel_bem_trichotomous(
   seed = 666
 )
 fit
-#>  variable    mean  median    sd  mad      q5     q95 rhat ess_bulk ess_tail
-#>      lp__ -174.95 -172.36 11.25 8.13 -198.54 -163.20 1.04       13       30
-#>      d[1]   32.22   30.38 13.25 7.41   20.71   49.67 0.99       77       53
-#>      d[2]   26.78   26.31  8.27 8.74   16.25   40.60 0.99       97       65
-#>      d[3]   23.83   21.45 10.02 7.51   13.03   38.47 1.00      166       78
-#>      d[4]   30.00   28.92 10.10 8.10   17.66   49.19 0.99       77       47
-#>      d[5]   24.76   23.21  8.09 7.40   14.23   39.19 1.06      129       64
-#>      d[6]   26.32   24.61  9.34 7.16   14.53   39.28 1.00      101       16
-#>      d[7]   24.68   22.55  7.82 6.76   16.05   35.19 1.00      141       76
-#>      d[8]   30.01   26.29 16.30 9.42   15.57   49.39 1.05       52       32
-#>      d[9]   25.08   24.67  6.70 6.33   17.00   35.84 1.03       53       73
+#>  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail
+#>      lp__ -185.96 -185.50 10.84 12.22 -201.35 -168.53 1.06       11       30
+#>      d[1]   36.37   33.13 17.10 14.39   15.78   60.32 1.01      124       48
+#>      d[2]   27.64   26.23  9.60  8.44   15.83   44.43 1.00      106       53
+#>      d[3]   23.29   22.66  9.12  9.17    9.66   37.57 1.10      110       56
+#>      d[4]   32.93   31.24 15.06 10.26   16.38   64.42 1.05      102       42
+#>      d[5]   26.85   24.01 14.49 10.94   13.04   45.81 1.03      110       15
+#>      d[6]   25.99   25.73  8.93  8.09   13.37   40.03 1.04       88       59
+#>      d[7]   27.63   23.89 13.82 13.85   11.35   52.35 1.02      120       24
+#>      d[8]   33.14   29.48 13.36  9.61   18.42   52.12 1.01      120       78
+#>      d[9]   27.21   26.44 11.67  9.00   12.90   45.50 1.04       18       66
 #> 
 #>  # showing 10 of 56 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
@@ -637,8 +906,17 @@ fit
 
 See
 [`?maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md).
+This is the simplest of the Maltiel et al (2015) models: the count
+$`y_{ik}`$ is binomial with $`d_i`$ trials and success probability
+$`m_k`$, so the only parameters are the degrees `d` and the lognormal
+hyperparameters `mu` and `sigma`. It is also the model the example data
+were simulated from, so the fit should recover `mu` close to 3.
 
 ### Count responses
+
+The inputs are `N`, `K`, the count matrix `y`, the fractional
+subpopulation sizes `m` and the degree lower bounds `L`, followed by the
+sampling settings:
 
 ``` r
 
@@ -660,7 +938,7 @@ fit
 #>  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail
 #>  lp__     -227.79 -227.65 5.64 4.92 -238.16 -219.42 1.12        9       30
 #>  d_raw[1]   23.30   23.23 6.08 5.07   14.31   33.76 1.07      120       52
-#>  d_raw[2]   21.43   20.72 5.62 5.84   13.43   30.78 1.04      158      112
+#>  d_raw[2]   21.43   20.72 5.62 5.84   13.43   30.78 1.03      158      112
 #>  d_raw[3]   17.00   16.51 4.65 4.07    9.39   25.29 1.05      200       71
 #>  d_raw[4]   20.64   20.05 5.18 5.85   13.51   30.04 1.00      200       61
 #>  d_raw[5]   18.73   18.59 5.46 4.40    9.95   29.78 1.00      200      101
@@ -672,7 +950,28 @@ fit
 #>  # showing 10 of 103 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
 
+The summary starts with `d_raw`, the increments over the lower bounds
+`L` that the sampler actually works with; the degrees `d = L + d_raw`
+are further down the list. The hyperparameters of the degree
+distribution:
+
+``` r
+
+fit$summary(variables = c("mu", "sigma"))
+#> # A tibble: 2 × 10
+#>   variable  mean median     sd    mad    q5   q95  rhat ess_bulk ess_tail
+#>   <chr>    <dbl>  <dbl>  <dbl>  <dbl> <dbl> <dbl> <dbl>    <dbl>    <dbl>
+#> 1 mu       3.08   3.08  0.0499 0.0403 3.00  3.18   1.07    21.3      21.0
+#> 2 sigma    0.285  0.276 0.0352 0.0259 0.253 0.332  1.13     7.11     30.6
+```
+
 ### Dichotomous responses
+
+The dichotomous version (note the wrapper name,
+[`maltiel_rd_dichotomous()`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md))
+uses the binomial probabilities of a zero versus a positive count and
+does not use `L`. The inputs are `N`, `K`, the 0/1 matrix `y01`, `m` and
+`L`, followed by the sampling settings:
 
 ``` r
 
@@ -696,7 +995,7 @@ fit
 #>  variable    mean  median    sd   mad      q5    q95 rhat ess_bulk ess_tail
 #>      lp__ -104.21 -103.59 12.97 16.88 -125.26 -84.08 1.35        2       17
 #>      d[1]   31.01   27.75 12.59 12.31   16.71  58.50 1.07       60      112
-#>      d[2]   33.83   26.62 25.39 11.54   14.11  56.81 1.18        4       21
+#>      d[2]   33.83   26.62 25.39 11.54   14.11  56.80 1.18        4       21
 #>      d[3]   17.26   16.97  7.09  6.44    6.13  31.08 1.03       66      112
 #>      d[4]   33.28   27.24 22.41 11.56   14.12  67.84 1.05       28       25
 #>      d[5]   23.92   21.93  9.21  5.76   12.41  44.57 0.99      173       68
@@ -707,6 +1006,204 @@ fit
 #> 
 #>  # showing 10 of 53 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
 ```
+
+## Maltiel et al (2015) Transmission Bias Model
+
+See
+[`?maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md).
+Respondents may not know that some of their contacts belong to a
+subpopulation – membership in stigmatized or private groups is not
+always “transmitted” across ties. The Transmission Bias Model extends
+the Random Degree Model by replacing the prevalence $`m_k`$ with
+$`\tau_k m_k`$, where `tau[k]` in (0, 1) is the fraction of the members
+of subpopulation $`k`$ whose membership is visible to their contacts.
+Each `tau[k]` gets a beta prior with shape parameters `eta[k]` and
+`v[k]` supplied by the user. Since the expected counts depend on the
+product $`d_i \tau_k m_k`$, the data alone cannot separate a low
+`tau[k]` from a small `m[k]`, nor either of them from the degrees:
+inflating the degrees and deflating the biases leaves the fitted counts
+unchanged. These priors are therefore where knowledge about transmission
+(e.g. from other studies) enters the model: `eta = 1, v = 1` is a
+uniform prior, whereas `eta = 9, v = 1` encodes a belief that about 90%
+of the members are visible.
+
+### Count responses
+
+The inputs are `N`, `K`, the count matrix `y`, the fractional
+subpopulation sizes `m` and the degree lower bounds `L` as in the Random
+Degree Model, plus the vectors `eta` and `v` of length `K` with the beta
+prior shape parameters for each `tau[k]` – here uniform priors for all
+three subpopulations. The remaining arguments are the sampling settings:
+
+``` r
+
+fit <- maltiel_tbm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  eta = rep(1, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+#>  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail
+#>  lp__     -234.24 -234.32  7.34  8.51 -246.02 -222.72 0.99       25       72
+#>  d_raw[1]   31.04   29.51 11.51 10.73   14.60   47.63 1.05       41       36
+#>  d_raw[2]   30.73   28.09 12.73 10.90   16.24   56.12 1.00       26       13
+#>  d_raw[3]   23.41   20.05 11.20  7.10   11.00   44.74 1.00       22       31
+#>  d_raw[4]   28.13   25.26 10.82  8.34   16.33   53.45 1.02       20       28
+#>  d_raw[5]   24.59   22.83  9.45  7.56   13.84   43.87 1.00       23       31
+#>  d_raw[6]   24.61   23.26  8.57  7.05   13.11   39.33 1.01       24       42
+#>  d_raw[7]   26.19   23.16 11.21  8.28   14.44   46.25 1.00       23       31
+#>  d_raw[8]   26.77   23.84 12.38  7.02   13.83   49.02 1.00       29       52
+#>  d_raw[9]   26.10   23.23 12.39  9.34   12.17   51.04 1.00       38       30
+#> 
+#>  # showing 10 of 106 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+The transmission parameters are summarised as usual:
+
+``` r
+
+fit$summary("tau")
+#> # A tibble: 3 × 10
+#>   variable  mean median    sd    mad    q5   q95  rhat ess_bulk ess_tail
+#>   <chr>    <dbl>  <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl>    <dbl>    <dbl>
+#> 1 tau[1]   0.696  0.696 0.158 0.179  0.429 0.941  1.04     24.2     12.8
+#> 2 tau[2]   0.825  0.876 0.142 0.0904 0.520 0.966  1.02     12.9     12.7
+#> 3 tau[3]   0.750  0.782 0.174 0.179  0.401 0.966  1.05     11.0     12.9
+```
+
+Without informative priors `tau` and the degrees `d` are only weakly
+separated – a lower visibility of a subpopulation can be compensated by
+larger degrees – so the posterior of `tau` remains wide. The data were
+simulated with full transmission, i.e. `tau = 1`.
+
+## Maltiel et al (2015) Combined Model
+
+See
+[`?maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md).
+This is the model of section 2.4 of Maltiel et al. (2015), carrying both
+the barrier effects of the Barrier Effects Model and the transmission
+bias of the Transmission Bias Model:
+
+``` math
+y_{ik} \sim \mathrm{Binomial}(d_i, \tau_k q_{ik}), \qquad
+d_i \sim \mathrm{LogNormal}(\mu, \sigma^2), \qquad
+q_{ik} \sim \mathrm{Beta}(m_k, \rho_k)
+```
+
+where $`\mathrm{Beta}(m_k, \rho_k)`$ is parametrized by its mean $`m_k`$
+and overdispersion $`\rho_k`$, as in the Barrier Effects Model.
+Multiplying $`q_{ik}`$ by $`\tau_k`$ breaks the beta-binomial conjugacy
+that
+[`maltiel_bem_count()`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md)
+relies on, so the latent $`q_{ik}`$ cannot be integrated out and are
+sampled instead. The model therefore has `N * K` more parameters than
+the others and is the slowest in the package.
+
+### Count responses
+
+The inputs are those of the Transmission Bias Model – `N`, `K`, the
+count matrix `y`, the fractional subpopulation sizes `m`, the degree
+lower bounds `L` and the beta prior shapes `eta` and `v` for the
+transmission biases – followed by the sampling settings. Because the
+`tau`/degree confounding described above applies here too, and because
+this model has the barrier effects to fit as well, we use an informative
+`Beta(9, 1)` prior (mean 0.9) rather than the flat one:
+
+``` r
+
+fit <- maltiel_cm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  eta = rep(9, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+#> Warning: 1 of 1 chains had an E-BFMI less than 0.3.
+#> See https://mc-stan.org/misc/warnings for details.
+fit
+#>  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail
+#>  lp__     -327.34 -337.89 55.55 73.54 -402.21 -243.36 1.99        1       21
+#>  d_raw[1]   25.54   24.51  8.25  6.51   15.57   39.52 1.05      138      112
+#>  d_raw[2]   22.68   22.24  6.50  6.69   13.18   33.38 1.00       96       78
+#>  d_raw[3]   17.40   16.75  5.85  5.25    9.77   27.30 1.01       66       31
+#>  d_raw[4]   22.13   21.23  6.59  6.41   13.27   35.20 1.01       95       24
+#>  d_raw[5]   20.49   19.13  6.48  5.58   12.52   31.65 1.02       69       37
+#>  d_raw[6]   20.55   19.47  5.28  4.65   12.91   29.07 1.00       96       76
+#>  d_raw[7]   19.14   18.13  6.56  5.16    9.84   31.39 1.00       98       76
+#>  d_raw[8]   21.85   20.92  5.72  6.20   14.28   32.38 1.00      140       53
+#>  d_raw[9]   19.82   18.71  5.49  5.90   13.54   29.75 1.01      115       74
+#> 
+#>  # showing 10 of 259 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)
+```
+
+The summary is dominated by the `N * K` latent `q` values. The two sets
+of parameters that describe the subpopulations are more informative:
+
+``` r
+
+fit$summary(variables = c("tau", "rho"))
+#> # A tibble: 6 × 10
+#>   variable    mean  median      sd     mad       q5    q95  rhat ess_bulk
+#>   <chr>      <dbl>   <dbl>   <dbl>   <dbl>    <dbl>  <dbl> <dbl>    <dbl>
+#> 1 tau[1]   0.883   0.907   0.0848  0.0812  0.718    0.982   1.01    68.7 
+#> 2 tau[2]   0.940   0.952   0.0510  0.0443  0.848    0.998   1.03    21.6 
+#> 3 tau[3]   0.893   0.906   0.0705  0.0686  0.770    0.984   1.04    35.6 
+#> 4 rho[1]   0.0192  0.0130  0.0160  0.00949 0.00278  0.0511  1.48     2.18
+#> 5 rho[2]   0.00769 0.00703 0.00606 0.00653 0.000553 0.0177  1.22     3.37
+#> 6 rho[3]   0.0141  0.0104  0.0109  0.00874 0.00271  0.0364  1.59     1.86
+#> # ℹ 1 more variable: ess_tail <dbl>
+```
+
+`tau` stays close to the prior, as the discussion above leads one to
+expect, and `rho` measures the barrier effects on top of it. With so few
+iterations and this many parameters the sampler has not explored the
+posterior properly; a real fit of this model needs considerably longer
+runs than the other models in this vignette.
+
+## Where to go from here
+
+The examples above show the calling syntax and the shape of the results.
+In a real analysis:
+
+- run several chains for many more iterations, check `rhat`, the
+  effective sample sizes and `$diagnostic_summary()` before trusting any
+  summary;
+- use `$draws()` with the **posterior** package to compute derived
+  quantities (degrees, subpopulation sizes, mean degree) for every draw
+  and summarize them, and packages such as **bayesplot** to visualize
+  the posterior;
+- save the fitted object with `$save_object()` because the underlying
+  CSV files are temporary.
+
+The help pages
+[`?zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md),
+[`?zheng_gp`](https://coalesce-lab.github.io/stansum/reference/zheng_gp.md),
+[`?maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
+[`?maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md),
+[`?maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md)
+and
+[`?maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md)
+document the wrappers and point to the original papers.
 
 ## References
 

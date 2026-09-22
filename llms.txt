@@ -75,6 +75,8 @@ Statistical Association* 101 (474): 409–23.
   [`maltiel_bem_dichotomous()`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md)
   [`maltiel_bem_trichotomous()`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md)
   : Maltiel et al (2015) Barrier Effects Model
+- [`maltiel_cm_count()`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md)
+  : Maltiel et al (2015) Combined Model
 - [`maltiel_rdm_count()`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md)
   [`maltiel_rd_dichotomous()`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md)
   : Maltiel et al (2015) Random Degree Model

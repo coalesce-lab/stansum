@@ -85,6 +85,7 @@ to return Stan model object of class
 without fitting it.
 
 Other models in this package:
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md),
 [`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md),
 [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md),
@@ -92,5 +93,6 @@ Other models in this package:
 [`zheng_gp`](https://coalesce-lab.github.io/stansum/reference/zheng_gp.md)
 
 Other models of Maltiel et al (2015):
+[`maltiel_cm`](https://coalesce-lab.github.io/stansum/reference/maltiel_cm.md),
 [`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md),
 [`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md)

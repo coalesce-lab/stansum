@@ -64,17 +64,56 @@ This vignette is precomputed: edit `stansum.Rmd.orig` and regenerate
 -->
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://coalesce-lab.github.io/stansum/">stansum</a></span><span class="op">)</span></span></code></pre></div>
+<div class="section level2">
+<h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
+</h2>
+<p>Aggregated Relational Data (ARD) are answers to survey questions of
+the form “How many people do you know who are <em>X</em>?”, where
+<em>X</em> is a subpopulation such as “named Michael”, “are medical
+doctors”, or “died in a car accident last year”. A respondent
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>N</mi></mrow><annotation encoding="application/x-tex">i = 1, \dots, N</annotation></semantics></math>
+answers such a question for each of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math>
+subpopulations, and the resulting
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo>×</mo><mi>K</mi></mrow><annotation encoding="application/x-tex">N \times K</annotation></semantics></math>
+table of counts
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">y_{ik}</annotation></semantics></math>
+is the input of every model in this package. The main quantities of
+interest are the sizes of the personal networks of the respondents
+(their <em>degrees</em>), and – in the Network Scale-Up Method (NSUM) –
+the sizes of subpopulations that are hard to count directly. If the
+sizes of some of the subpopulations are known, they anchor the scale of
+the degrees; a hidden subpopulation can then be sized by comparing how
+many of its members respondents report knowing relative to the known
+ones.</p>
 <p>The <strong>stansum</strong> package wraps a collection of
-precompiled Stan models for Aggregated Relational Data (ARD) proposed by
-<span class="citation">Zheng et al. (2006)</span>, <span class="citation">Maltiel et al. (2015)</span> and <span class="citation">Baum and Marsden (2023)</span>. The models are embedded
-in the package using <strong>instantiate</strong> <span class="citation">(Landau 2023)</span> and sampled with
-<strong>cmdstanr</strong> <span class="citation">(Gabry et al.
-2022)</span>.</p>
+precompiled Stan models for ARD proposed by <span class="citation">Zheng
+et al. (2006)</span>, <span class="citation">Maltiel et al.
+(2015)</span> and <span class="citation">Baum and Marsden (2023)</span>.
+The models are embedded in the package using
+<strong>instantiate</strong> <span class="citation">(Landau 2023)</span>
+and sampled with <strong>cmdstanr</strong> <span class="citation">(Gabry
+et al. 2022)</span>. Two model families are covered:</p>
+<ul>
+<li>the overdispersed Poisson models of <span class="citation">Zheng et
+al. (2006)</span>, in which degrees and subpopulation prevalences enter
+through log-linear respondent and subpopulation effects;</li>
+<li>the models of <span class="citation">Maltiel et al. (2015)</span>,
+in which degrees are explicit parameters with a lognormal prior and the
+counts are binomial or beta-binomial.</li>
+</ul>
+<p>Most models come in a <em>count</em> version, which uses the answers
+as they are, and in <em>dichotomous</em> (knows anyone in the
+subpopulation or not) and <em>trichotomous</em> (nobody / one person /
+two or more) versions proposed by <span class="citation">Baum and
+Marsden (2023)</span> for surveys that collect coarsened answers.</p>
 <p>This vignette fits every model once. The examples are deliberately as
 computationally cheap as possible: they use a small subset of the data
 and a tiny number of MCMC iterations. Their purpose is to show the
-calling syntax and the structure of the fitted objects,
-<strong>not</strong> to produce meaningful estimates.</p>
+calling syntax, the structure of the fitted objects, and give a flavor
+of how to interpret the results – <strong>not</strong> to produce
+meaningful estimates.</p>
+</div>
 <div class="section level2">
 <h2 id="listing-and-loading-models">Listing and loading models<a class="anchor" aria-label="anchor" href="#listing-and-loading-models"></a>
 </h2>
@@ -85,11 +124,17 @@ calling syntax and the structure of the fitted objects,
 <span><span class="co">#&gt;  [1] "bernoulli"               "CovMod_count"           </span></span>
 <span><span class="co">#&gt;  [3] "CovMod_dichotomous"      "MaltielBEM_count"       </span></span>
 <span><span class="co">#&gt;  [5] "MaltielBEM_dichotomous"  "MaltielBEM_trichotomous"</span></span>
-<span><span class="co">#&gt;  [7] "MaltielRDM_count"        "MaltielRDM_dichotomous" </span></span>
-<span><span class="co">#&gt;  [9] "ZhengBEM_count"          "ZhengBEM_count2"        </span></span>
-<span><span class="co">#&gt; [11] "ZhengBEM_dichotomous"    "ZhengBEM_trichotomous"  </span></span>
-<span><span class="co">#&gt; [13] "ZhengGP_count"           "ZhengGP_dichotomous"</span></span></code></pre></div>
-<p>Use <code><a href="../reference/get_model.html">get_model()</a></code> to load one of them as a
+<span><span class="co">#&gt;  [7] "MaltielCM_count"         "MaltielRDM_count"       </span></span>
+<span><span class="co">#&gt;  [9] "MaltielRDM_dichotomous"  "MaltielTBM_count"       </span></span>
+<span><span class="co">#&gt; [11] "ZhengBEM_count"          "ZhengBEM_count2"        </span></span>
+<span><span class="co">#&gt; [13] "ZhengBEM_dichotomous"    "ZhengBEM_trichotomous"  </span></span>
+<span><span class="co">#&gt; [15] "ZhengGP_count"           "ZhengGP_dichotomous"</span></span></code></pre></div>
+<p>The names are the base names of the Stan files. Each model has an R
+wrapper named after it in lowercase, e.g. <code><a href="../reference/zheng_bem.html">zheng_bem_count()</a></code>
+for <code>ZhengBEM_count</code>. (The <code>CovMod_*</code> models and
+the <code>bernoulli</code> test model are also listed; the former do not
+have R wrappers yet.)</p>
+<p>Use <code><a href="../reference/get_model.html">get_model()</a></code> to load a model as a
 <strong>cmdstanr</strong> object of R6 class “CmdStanModel” without
 fitting it:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -135,6 +180,12 @@ Stan sources are installed alongside the executables:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;   }</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
+<p>The source is the definitive description of a model: the
+<code>data</code> block lists the inputs the model expects (and the R
+wrapper has one argument for each of them, with the same name), the
+<code>parameters</code> block lists what will show up in the posterior
+summaries, and the <code>model</code> block spells out the priors and
+the likelihood.</p>
 <p>The remaining sections use the R wrappers which load the model and
 sample from the posterior in one call.</p>
 </div>
@@ -143,9 +194,13 @@ sample from the posterior in one call.</p>
 </h2>
 <p>All examples use the artificial dataset <code>Fake_maltiel_RD</code>
 shipped with the package. It was simulated from the Random Degree model
-of <span class="citation">Maltiel et al. (2015)</span> for 1000
-respondents and three subpopulations of sizes 100000, 200000 and 300000
-in a population of 3 million. See <code><a href="../reference/Fake.html">?Fake</a></code> for details.</p>
+of <span class="citation">Maltiel et al. (2015)</span> (see below) for
+1000 respondents and three subpopulations of sizes 100000, 200000 and
+300000 in a population of 3 million. The degrees were drawn from a
+lognormal distribution with a median of about 20. In a real survey the
+subpopulations would be chosen so that their sizes are known from a
+census or a register – these known sizes are what pin down the scale of
+the degree estimates. See <code><a href="../reference/Fake.html">?Fake</a></code> for details.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"Fake_maltiel_RD"</span>, package <span class="op">=</span> <span class="st">"stansum"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">Fake_maltiel_RD</span><span class="op">)</span></span>
@@ -157,26 +212,39 @@ in a population of 3 million. See <code><a href="../reference/Fake.html">?Fake</
 <span><span class="co">#&gt; 5  0  2  1</span></span>
 <span><span class="co">#&gt; 6  0  3  1</span></span></code></pre></div>
 <p>To keep the computations cheap we use the first 50 respondents only.
-The models expect ARD as a matrix with respondents in rows and
-subpopulations in columns:</p>
+All models take the ARD as an integer matrix <code>y</code> with
+respondents in rows and subpopulations in columns, together with its
+dimensions <code>N</code> (number of respondents) and <code>K</code>
+(number of subpopulations):</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.matrix.html" class="external-link">data.matrix</a></span><span class="op">(</span><span class="va">Fake_maltiel_RD</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">50</span>, <span class="op">]</span></span>
 <span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span>
 <span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span></code></pre></div>
+<p>The count models skip cells with negative values, so a missing answer
+can be encoded as, say, <code>-1</code> rather than <code>NA</code>
+(which Stan does not accept).</p>
 <p>Some of the models accept dichotomous (does the respondent know
 anyone in the subpopulation: 0/1) or trichotomous (knows nobody / one
-person / two or more: 0/1/2) responses instead of counts <span class="citation">(Baum and Marsden 2023)</span>. We derive them from the
-counts:</p>
+person / two or more: 0/1/2) responses instead of counts <span class="citation">(Baum and Marsden 2023)</span>. Such data arise when
+the questionnaire only asks “Do you know anyone who…?” or offers a small
+number of answer categories. We derive them from the counts:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y01</span> <span class="op">&lt;-</span> <span class="fl">1L</span> <span class="op">*</span> <span class="op">(</span><span class="va">y</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="va">y012</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<p>The Maltiel et al (2015) models additionally need <code>m</code> –
-the vector of subpopulation sizes as fractions of the population size –
-and <code>L</code> – a per-respondent lower bound on the degree. The
-count models parametrize the degree as <code>L + d_raw</code> with
-<code>d_raw &gt; 0</code>, so <code>L</code> must be at least the
-largest number of people a respondent reported knowing in any
-subpopulation:</p>
+<p>The Maltiel et al (2015) models additionally need</p>
+<ul>
+<li>
+<code>m</code> – a vector of length <code>K</code> with the sizes of
+the subpopulations as fractions of the population size, hence numbers in
+(0, 1);</li>
+<li>
+<code>L</code> – a vector of length <code>N</code> with a lower
+bound on the degree of each respondent. The count models parametrize the
+degree as <code>L + d_raw</code> with <code>d_raw &gt; 0</code>, so
+<code>L[i]</code> must be at least the largest number of people
+respondent <code>i</code> reported knowing in any subpopulation. Using
+exactly that maximum is the natural choice:</li>
+</ul>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1e5</span> <span class="op">/</span> <span class="fl">3e6</span></span>
 <span><span class="va">L</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span></span></code></pre></div>
@@ -190,28 +258,38 @@ method of the “CmdStanModel” object, see
 <ul>
 <li>
 <code>chains = 1</code>, <code>iter_warmup = 100</code>,
-<code>iter_sampling = 100</code> – the cheapest settings that still run
-in a reasonable manner. Real applications require multiple chains and
-far more iterations.</li>
+<code>iter_sampling = 100</code> – one Markov chain, 100 iterations of
+warmup (adaptation of the sampler; these draws are discarded) and 100
+iterations retained as posterior draws. These are the cheapest settings
+that still run in a reasonable manner. Real applications require
+multiple chains (e.g. the <strong>cmdstanr</strong> default of 4, which
+can be run concurrently with <code>parallel_chains</code>) and far more
+iterations (hundreds to thousands of each kind) so that convergence can
+be assessed and the posterior summaries are precise.</li>
 <li>
 <code>refresh = 0</code>, <code>show_messages = FALSE</code> and
 <code>show_exceptions = FALSE</code> – suppress progress output and
-informational messages from Stan.</li>
+informational messages from Stan. Leave them at their defaults when
+working interactively; the messages are useful.</li>
 <li>
-<code>seed = 666</code> – for reproducibility.</li>
+<code>seed = 666</code> – for reproducibility of the random
+draws.</li>
 </ul>
 <p>With so few iterations the posterior summaries come with warnings
 about unreliable effective sample sizes (ESS). They are expected here
 and are not shown in this vignette.</p>
 <p>The arguments are spelled out in every call so that each example is
-self-contained.</p>
+self-contained; the text refers to them collectively as “the sampling
+settings”.</p>
 </div>
 <div class="section level2">
 <h2 id="a-test-model">A test model<a class="anchor" aria-label="anchor" href="#a-test-model"></a>
 </h2>
 <p><code><a href="../reference/test_model.html">test_model()</a></code> wraps a simple Bernoulli model borrowed
 from the Stan documentation. It is useful for checking that the
-toolchain works:</p>
+toolchain works. Its inputs are <code>N</code>, the number of binary
+observations, and <code>y</code>, the vector of those observations. The
+remaining arguments are the sampling settings:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y_test</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_model.html">test_model</a></span><span class="op">(</span></span>
@@ -229,14 +307,55 @@ toolchain works:</p>
 <span><span class="co">#&gt;  variable  mean median   sd  mad     q5   q95 rhat ess_bulk ess_tail</span></span>
 <span><span class="co">#&gt;     lp__  -8.77  -8.48 0.77 0.35 -10.21 -8.18 1.03       39       54</span></span>
 <span><span class="co">#&gt;     theta  0.47   0.51 0.14 0.15   0.24  0.69 1.00       57       78</span></span></code></pre></div>
+<p>Printing a fitted object shows a summary of the posterior. The only
+model parameter is <code>theta</code>, the probability of success, and
+its posterior mean is close to the sample proportion of 0.4 (the
+<code>lp__</code> row is the log posterior density up to a constant,
+useful for diagnostics but not a parameter).</p>
 </div>
 <div class="section level2">
 <h2 id="zheng-et-al-2006-barrier-effects-model">Zheng et al (2006) Barrier Effects Model<a class="anchor" aria-label="anchor" href="#zheng-et-al-2006-barrier-effects-model"></a>
 </h2>
-<p>See <code><a href="../reference/zheng_bem.html">?zheng_bem</a></code>.</p>
+<p>See <code><a href="../reference/zheng_bem.html">?zheng_bem</a></code>. In this model the count
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">y_{ik}</annotation></semantics></math>
+is negative binomial with mean
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>α</mi><mi>i</mi></msub><mo>+</mo><msub><mi>β</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\exp(\alpha_i + \beta_k)</annotation></semantics></math>,
+where</p>
+<ul>
+<li>
+<code>alpha[i]</code> is a respondent effect, the log degree of
+respondent
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+up to an additive constant (higher values = more gregarious
+respondents),</li>
+<li>
+<code>beta[k]</code> is a subpopulation effect, the log prevalence
+of subpopulation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
+up to the same constant,</li>
+<li>
+<code>inv_omega[k]</code> in (0, 1] is the inverse of the
+overdispersion of subpopulation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>:
+the variance of the counts is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ω</mi><mi>k</mi></msub><annotation encoding="application/x-tex">\omega_k</annotation></semantics></math>
+times the mean, so <code>inv_omega[k]</code> close to 1 means
+Poisson-like counts, while small values mean that some respondents know
+many more members of subpopulation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
+than their degree alone would suggest – a <em>barrier effect</em>
+(social structure that concentrates ties to a subpopulation among some
+people).</li>
+</ul>
+<p>The hyperparameters <code>mu_beta</code> and <code>sigma_beta</code>
+describe the distribution of the subpopulation effects and
+<code>sigma_alpha</code> the spread of the respondent effects.</p>
 <div class="section level3">
 <h3 id="count-responses">Count responses<a class="anchor" aria-label="anchor" href="#count-responses"></a>
 </h3>
+<p>The inputs are <code>N</code> and <code>K</code>, the dimensions of
+the ARD, and <code>y</code>, the matrix of counts. The remaining
+arguments are the sampling settings:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zheng_bem.html">zheng_bem_count</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
@@ -252,7 +371,7 @@ toolchain works:</p>
 <span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt;  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail</span></span>
-<span><span class="co">#&gt;  lp__     -163.26 -164.74 13.02 13.47 -181.31 -139.61 1.10        7       21</span></span>
+<span><span class="co">#&gt;  lp__     -163.26 -164.74 13.02 13.47 -181.32 -139.61 1.10        7       21</span></span>
 <span><span class="co">#&gt;  alpha[1]    0.07    0.06  0.18  0.17   -0.21    0.36 1.00      172       78</span></span>
 <span><span class="co">#&gt;  alpha[2]    0.08    0.06  0.22  0.24   -0.26    0.39 0.99      159       52</span></span>
 <span><span class="co">#&gt;  alpha[3]   -0.07   -0.07  0.16  0.16   -0.36    0.17 1.03      137      112</span></span>
@@ -264,6 +383,11 @@ toolchain works:</p>
 <span><span class="co">#&gt;  alpha[9]    0.01    0.02  0.15  0.13   -0.19    0.24 1.06      146       78</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
+<p>The printed summary is truncated to the first 10 of the 60 rows (the
+<code>max_rows</code> argument of the print method controls this), so
+with 50 respondents we only see some of the <code>alpha</code>s. The
+<code>$summary()</code> method described next gives access to any
+subset.</p>
 </div>
 <div class="section level3">
 <h3 id="structure-of-the-fitted-object">Structure of the fitted object<a class="anchor" aria-label="anchor" href="#structure-of-the-fitted-object"></a>
@@ -275,7 +399,8 @@ other fits below have the same structure.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "CmdStanMCMC" "CmdStanFit"  "R6"</span></span></code></pre></div>
 <p>Basic information about the model and the run is available through
-<code>$metadata()</code>:</p>
+<code>$metadata()</code>, e.g. the model name, the names of all
+variables in the posterior, and the number of sampling iterations:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">metadata</span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">model_name</span></span>
 <span><span class="co">#&gt; [1] "ZhengBEM_count_model"</span></span>
@@ -284,7 +409,10 @@ other fits below have the same structure.</p>
 <span><span class="co">#&gt; [6] "sigma_beta"  "sigma_alpha"</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">metadata</span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">iter_sampling</span></span>
 <span><span class="co">#&gt; [1] 100</span></span></code></pre></div>
-<p>Posterior summaries for all or selected variables:</p>
+<p>Posterior summaries for all or selected variables are computed by
+<code>$summary()</code>. Vector parameters such as <code>alpha</code>
+are expanded to one row per element, and asking for <code>"alpha"</code>
+returns all of them:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # A tibble: 60 × 10</span></span>
@@ -309,6 +437,16 @@ other fits below have the same structure.</p>
 <span><span class="co">#&gt; 1 mu_beta     1.55   0.395  5.21   1.31   -8.64    8.92   1.88     8.38     21.6</span></span>
 <span><span class="co">#&gt; 2 sigma_beta  9.78   4.97  12.5    6.42    0.298  39.5    2.08     1.47     21.6</span></span>
 <span><span class="co">#&gt; 3 sigma_alpha 0.173  0.173  0.0474 0.0520  0.0982  0.255  1.02    13.6      31.5</span></span></code></pre></div>
+<p>Each row gives the posterior mean and median, the standard deviation
+and the median absolute deviation, and the 5th and 95th percentiles (a
+90% credible interval) of a variable. The last three columns are
+convergence diagnostics: <code>rhat</code> compares the chains (and
+parts of chains) with each other and should be close to 1 (values above
+1.01 are a warning sign), and <code>ess_bulk</code> and
+<code>ess_tail</code> are the effective numbers of independent draws
+behind the estimate of the center and the tails of the posterior,
+respectively. With 100 draws from one chain these numbers are of course
+tiny; in a real analysis one expects several hundred at least.</p>
 <p>The posterior draws themselves are returned by <code>$draws()</code>
 in one of the formats supported by the <strong>posterior</strong>
 package – by default a <code>draws_array</code> with dimensions
@@ -330,7 +468,16 @@ iterations x chains x variables:</p>
 <span><span class="co">#&gt; 6 -158   -0.111   -0.061   -0.154   -0.184  -0.1116    0.086  -0.1760</span></span>
 <span><span class="co">#&gt; # ... with 52 more variables</span></span>
 <span><span class="co">#&gt; # ... hidden reserved variables {'.chain', '.iteration', '.draw'}</span></span></code></pre></div>
-<p>Sampler diagnostics:</p>
+<p>The data frame format (<code>format = "df"</code>) is the most
+convenient one for computing derived quantities: every row is one draw
+of all parameters, so any function of the parameters can be evaluated
+draw by draw and summarised afterwards, which propagates the posterior
+uncertainty correctly.</p>
+<p>Sampler diagnostics – the number of divergent transitions, the number
+of iterations that hit the maximum tree depth, and the energy-based
+diagnostic E-BFMI – are returned by <code>$diagnostic_summary()</code>.
+Divergences in particular indicate that the sampler struggled and the
+draws may be biased:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">diagnostic_summary</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $num_divergent</span></span>
@@ -340,7 +487,7 @@ iterations x chains x variables:</p>
 <span><span class="co">#&gt; [1] 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $ebfmi</span></span>
-<span><span class="co">#&gt; [1] 0.3318881</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.3318877</span></span></code></pre></div>
 <p>Note that the draws live in CSV files written by CmdStan (see
 <code>fit$output_files()</code>) that are by default created in a
 temporary directory and are deleted when the R session ends. Use
@@ -349,12 +496,68 @@ temporary directory and are deleted when the R session ends. Use
 methods.</p>
 </div>
 <div class="section level3">
+<h3 id="interpreting-the-fit">Interpreting the fit<a class="anchor" aria-label="anchor" href="#interpreting-the-fit"></a>
+</h3>
+<p>Because the mean of the counts depends on
+<code>alpha[i] + beta[k]</code> only, the model cannot tell how much of
+that sum is due to the respondent and how much to the subpopulation:
+adding a constant to all <code>alpha</code>s and subtracting it from all
+<code>beta</code>s leaves the likelihood unchanged. The priors center
+the <code>alpha</code>s at zero, which fixes the scale arbitrarily.
+<span class="citation">Zheng et al. (2006)</span> pin it down using the
+known subpopulation sizes: the prevalences <code>exp(beta[k])</code> of
+the known subpopulations should add up to their known combined share of
+the population. In our data all three subpopulations are known, so the
+shift <code>C</code> is the log of the ratio of the estimated combined
+share <code>sum(exp(beta))</code> to the known one <code>sum(m)</code>;
+subtracting it from the <code>beta</code>s makes them log prevalences
+and adding it to the <code>alpha</code>s makes them log degrees,
+<code>exp(alpha + C)</code>:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">beta_hat</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"beta"</span><span class="op">)</span><span class="op">$</span><span class="va">mean</span></span>
+<span><span class="va">alpha_hat</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"alpha"</span><span class="op">)</span><span class="op">$</span><span class="va">mean</span></span>
+<span><span class="va">C</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">beta_hat</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">degree</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">alpha_hat</span> <span class="op">+</span> <span class="va">C</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">degree</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
+<span><span class="co">#&gt;   19.19   20.45   21.27   21.18   21.98   23.96</span></span></code></pre></div>
+<p>This is a quick point estimate based on posterior means; a proper
+analysis applies the same computation to every draw in
+<code>fit$draws(format = "df")</code> to obtain full posterior
+distributions of the degrees. (The data were simulated with a median
+degree of about 20, so even this toy run gets the order of magnitude
+right.) The overdispersion parameters tell whether there are barrier
+effects with respect to any of the subpopulations:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"inv_omega"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 3 × 10</span></span>
+<span><span class="co">#&gt;   variable      mean median     sd    mad    q5   q95  rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;        &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 inv_omega[1] 0.791  0.798 0.100  0.108  0.607 0.916  1.10    25.8      33.2</span></span>
+<span><span class="co">#&gt; 2 inv_omega[2] 0.876  0.912 0.0909 0.0735 0.706 0.966  1.25     3.74     48.4</span></span>
+<span><span class="co">#&gt; 3 inv_omega[3] 0.857  0.875 0.0772 0.0793 0.726 0.952  1.05    31.0     111.</span></span></code></pre></div>
+<p>The data were simulated without barrier effects, so
+<code>inv_omega</code> should be close to 1 for all three
+subpopulations, but with 100 draws the estimates are noisy.</p>
+</div>
+<div class="section level3">
 <h3 id="count-responses-alternative-parametrization">Count responses (alternative parametrization)<a class="anchor" aria-label="anchor" href="#count-responses-alternative-parametrization"></a>
 </h3>
-<p><code><a href="../reference/zheng_bem.html">zheng_bem_count2()</a></code> is the same model with a different
-parametrization of the overdispersion parameters and different
-priors:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<p><code><a href="../reference/zheng_bem.html">zheng_bem_count2()</a></code> fits the same likelihood with a
+different parametrization and different priors. The respondent and
+subpopulation effects are sampled as standardized deviations
+(<code>alpha_std</code>, <code>beta_std</code>) and scaled afterwards,
+which typically makes the sampler more efficient for hierarchical
+models; the overdispersion is parametrized as
+<code>eta[k] = omega[k] - 1</code> with a gamma prior; and the
+hyperparameters get weakly informative normal priors.
+<code>alpha</code>, <code>beta</code>, <code>omega</code> and
+<code>inv_omega</code> are computed as transformed parameters and
+generated quantities, so the summaries are directly comparable with the
+previous fit. The inputs are the same: <code>N</code>, <code>K</code>
+and the count matrix <code>y</code>, followed by the sampling
+settings:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zheng_bem.html">zheng_bem_count2</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -370,7 +573,7 @@ priors:</p>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt;      variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail</span></span>
 <span><span class="co">#&gt;  lp__         -260.09 -259.93 6.18 6.76 -270.16 -250.49 1.05       27       52</span></span>
-<span><span class="co">#&gt;  alpha_std[1]    0.16    0.30 1.00 1.15   -1.50    1.63 1.03      152       53</span></span>
+<span><span class="co">#&gt;  alpha_std[1]    0.16    0.30 1.00 1.15   -1.50    1.63 1.02      152       53</span></span>
 <span><span class="co">#&gt;  alpha_std[2]    0.21    0.23 0.84 0.79   -1.27    1.56 1.00       90       76</span></span>
 <span><span class="co">#&gt;  alpha_std[3]   -0.23   -0.17 0.87 0.78   -1.90    1.16 0.99      133       54</span></span>
 <span><span class="co">#&gt;  alpha_std[4]    0.07    0.06 1.00 1.10   -1.64    1.67 0.99      101       78</span></span>
@@ -385,7 +588,15 @@ priors:</p>
 <div class="section level3">
 <h3 id="dichotomous-responses">Dichotomous responses<a class="anchor" aria-label="anchor" href="#dichotomous-responses"></a>
 </h3>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<p>For dichotomous data the model only uses the probabilities, implied
+by the same negative binomial distribution, of reporting nobody versus
+at least one person in each subpopulation. The parameters and their
+interpretation are as for the count model, but only the “knows nobody”
+versus “knows someone” contrast is informative, so the degree scale is
+estimated much less precisely <span class="citation">(Baum and Marsden
+2023)</span>. The inputs are <code>N</code>, <code>K</code> and the 0/1
+matrix <code>y01</code>, followed by the sampling settings:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zheng_bem.html">zheng_bem_dichotomous</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -402,23 +613,28 @@ priors:</p>
 <span><span class="co">#&gt; See https://mc-stan.org/misc/warnings for details.</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt;  variable   mean median    sd   mad     q5    q95 rhat ess_bulk ess_tail</span></span>
-<span><span class="co">#&gt;  lp__     -71.24 -73.74 16.44 13.89 -91.94 -36.92 1.31        3       21</span></span>
-<span><span class="co">#&gt;  alpha[1]   0.33   0.33  0.43  0.34  -0.34   0.98 1.00       68       71</span></span>
-<span><span class="co">#&gt;  alpha[2]   0.28   0.25  0.42  0.41  -0.24   0.92 1.13       72       43</span></span>
-<span><span class="co">#&gt;  alpha[3]  -0.54  -0.53  0.56  0.55  -1.54   0.22 1.04       33       54</span></span>
-<span><span class="co">#&gt;  alpha[4]   0.36   0.37  0.44  0.50  -0.29   1.04 1.00       87       83</span></span>
-<span><span class="co">#&gt;  alpha[5]   0.03   0.05  0.50  0.42  -0.74   0.65 1.00      176       64</span></span>
-<span><span class="co">#&gt;  alpha[6]   0.00  -0.02  0.50  0.40  -0.71   0.84 1.01      200       71</span></span>
-<span><span class="co">#&gt;  alpha[7]  -0.05  -0.07  0.49  0.43  -0.87   0.78 1.00      200      116</span></span>
-<span><span class="co">#&gt;  alpha[8]   0.00  -0.05  0.45  0.43  -0.79   0.87 1.02      200       60</span></span>
-<span><span class="co">#&gt;  alpha[9]   0.01   0.02  0.52  0.41  -0.78   0.75 1.08      200       25</span></span>
+<span><span class="co">#&gt;  lp__     -62.87 -65.27 20.23 21.34 -90.63 -24.71 1.24        3       21</span></span>
+<span><span class="co">#&gt;  alpha[1]   0.28   0.21  0.52  0.43  -0.46   1.05 1.05       77       78</span></span>
+<span><span class="co">#&gt;  alpha[2]   0.27   0.21  0.47  0.33  -0.41   1.17 1.10        7       48</span></span>
+<span><span class="co">#&gt;  alpha[3]  -0.44  -0.37  0.45  0.46  -1.14   0.19 1.09        7       68</span></span>
+<span><span class="co">#&gt;  alpha[4]   0.23   0.17  0.54  0.50  -0.51   1.07 1.01      105       65</span></span>
+<span><span class="co">#&gt;  alpha[5]  -0.06  -0.04  0.49  0.33  -0.90   0.73 1.09      137       35</span></span>
+<span><span class="co">#&gt;  alpha[6]  -0.02  -0.02  0.37  0.29  -0.58   0.54 1.02      195       30</span></span>
+<span><span class="co">#&gt;  alpha[7]  -0.06  -0.05  0.47  0.46  -0.79   0.67 1.10      200       31</span></span>
+<span><span class="co">#&gt;  alpha[8]   0.02   0.01  0.36  0.32  -0.51   0.71 1.04      200       54</span></span>
+<span><span class="co">#&gt;  alpha[9]  -0.04  -0.01  0.45  0.40  -0.87   0.72 1.20      200       73</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="trichotomous-responses">Trichotomous responses<a class="anchor" aria-label="anchor" href="#trichotomous-responses"></a>
 </h3>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<p>The trichotomous model additionally distinguishes knowing exactly one
+person from knowing two or more, which recovers some of the information
+lost when dichotomizing. The inputs are <code>N</code>, <code>K</code>
+and the 0/1/2 matrix <code>y012</code>, followed by the sampling
+settings:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zheng_bem.html">zheng_bem_trichotomous</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -435,16 +651,16 @@ priors:</p>
 <span><span class="co">#&gt; See https://mc-stan.org/misc/warnings for details.</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt;  variable    mean  median    sd   mad      q5    q95 rhat ess_bulk ess_tail</span></span>
-<span><span class="co">#&gt;  lp__     -122.24 -124.64 16.53 14.63 -142.79 -91.29 1.45        2       12</span></span>
-<span><span class="co">#&gt;  alpha[1]    0.24    0.20  0.29  0.31   -0.16   0.68 1.07       25      104</span></span>
-<span><span class="co">#&gt;  alpha[2]    0.07    0.07  0.25  0.26   -0.40   0.50 1.03      126       68</span></span>
-<span><span class="co">#&gt;  alpha[3]   -0.23   -0.19  0.37  0.30   -0.90   0.33 1.07      162       34</span></span>
-<span><span class="co">#&gt;  alpha[4]    0.14    0.12  0.39  0.39   -0.47   0.80 1.04      151       92</span></span>
-<span><span class="co">#&gt;  alpha[5]   -0.08   -0.06  0.31  0.21   -0.49   0.28 1.22      105       32</span></span>
-<span><span class="co">#&gt;  alpha[6]   -0.12   -0.06  0.38  0.27   -0.79   0.50 1.06      200       76</span></span>
-<span><span class="co">#&gt;  alpha[7]   -0.03   -0.02  0.27  0.26   -0.40   0.38 1.00      169       77</span></span>
-<span><span class="co">#&gt;  alpha[8]    0.15    0.16  0.40  0.34   -0.41   0.90 1.16      200       28</span></span>
-<span><span class="co">#&gt;  alpha[9]   -0.06   -0.03  0.30  0.32   -0.54   0.34 1.04       98       66</span></span>
+<span><span class="co">#&gt;  lp__     -114.42 -123.43 27.24 16.14 -143.97 -56.96 1.17        5       16</span></span>
+<span><span class="co">#&gt;  alpha[1]    0.21    0.17  0.34  0.30   -0.24   0.74 1.07       15      101</span></span>
+<span><span class="co">#&gt;  alpha[2]    0.02    0.05  0.24  0.18   -0.40   0.38 1.02      130       76</span></span>
+<span><span class="co">#&gt;  alpha[3]   -0.26   -0.19  0.35  0.23   -0.96   0.10 1.05       24       21</span></span>
+<span><span class="co">#&gt;  alpha[4]    0.06    0.01  0.27  0.27   -0.36   0.52 1.01      179       78</span></span>
+<span><span class="co">#&gt;  alpha[5]   -0.07   -0.04  0.29  0.22   -0.54   0.42 1.05      190       51</span></span>
+<span><span class="co">#&gt;  alpha[6]   -0.08   -0.03  0.36  0.31   -0.69   0.43 1.15       95       22</span></span>
+<span><span class="co">#&gt;  alpha[7]   -0.04   -0.03  0.29  0.23   -0.51   0.44 1.14      195       19</span></span>
+<span><span class="co">#&gt;  alpha[8]    0.05    0.02  0.37  0.24   -0.47   0.48 0.99      115       44</span></span>
+<span><span class="co">#&gt;  alpha[9]   -0.06   -0.03  0.32  0.28   -0.65   0.36 1.04      189       71</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 60 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
 </div>
@@ -452,11 +668,23 @@ priors:</p>
 <div class="section level2">
 <h2 id="zheng-et-al-2006-group-prevalence-model">Zheng et al (2006) Group Prevalence Model<a class="anchor" aria-label="anchor" href="#zheng-et-al-2006-group-prevalence-model"></a>
 </h2>
-<p>See <code><a href="../reference/zheng_gp.html">?zheng_gp</a></code>.</p>
+<p>See <code><a href="../reference/zheng_gp.html">?zheng_gp</a></code>. This is the Poisson special case of the
+Barrier Effects Model: the counts
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">y_{ik}</annotation></semantics></math>
+are Poisson with mean
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>α</mi><mi>i</mi></msub><mo>+</mo><msub><mi>β</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\exp(\alpha_i + \beta_k)</annotation></semantics></math>
+and there are no overdispersion parameters. <code>alpha</code>,
+<code>beta</code>, <code>mu_beta</code>, <code>sigma_beta</code> and
+<code>sigma_alpha</code> have the same meaning as before and the
+rescaling of the previous section applies unchanged. Comparing this fit
+with the Barrier Effects Model is one way of judging whether
+overdispersion matters for a given dataset.</p>
 <div class="section level3">
 <h3 id="count-responses-1">Count responses<a class="anchor" aria-label="anchor" href="#count-responses-1"></a>
 </h3>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<p>The inputs are <code>N</code>, <code>K</code> and the count matrix
+<code>y</code>, followed by the sampling settings:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zheng_gp.html">zheng_gp_count</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -489,7 +717,10 @@ priors:</p>
 <div class="section level3">
 <h3 id="dichotomous-responses-1">Dichotomous responses<a class="anchor" aria-label="anchor" href="#dichotomous-responses-1"></a>
 </h3>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<p>The dichotomous version uses the Poisson probability of a zero count
+versus a positive one. The inputs are <code>N</code>, <code>K</code> and
+the 0/1 matrix <code>y01</code>, followed by the sampling settings:</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/zheng_gp.html">zheng_gp_dichotomous</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -523,13 +754,42 @@ priors:</p>
 <div class="section level2">
 <h2 id="maltiel-et-al-2015-barrier-effects-model">Maltiel et al (2015) Barrier Effects Model<a class="anchor" aria-label="anchor" href="#maltiel-et-al-2015-barrier-effects-model"></a>
 </h2>
-<p>See <code><a href="../reference/maltiel_bem.html">?maltiel_bem</a></code>. These models need <code>m</code> and
-<code>L</code> in addition to the ARD (the dichotomous and trichotomous
-variants do not use <code>L</code>, but accept it for consistency).</p>
+<p>See <code><a href="../reference/maltiel_bem.html">?maltiel_bem</a></code>. The models of <span class="citation">Maltiel et al. (2015)</span> treat the degrees as
+parameters directly: <code>d[i]</code> is the degree of respondent
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>,
+and the degrees follow a lognormal distribution with parameters
+<code>mu</code> and <code>sigma</code> (on the log scale, with uniform
+priors on (3, 8) and (1/4, 2), respectively). Given the degree, the
+count
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">y_{ik}</annotation></semantics></math>
+is the number of “successes” among
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>i</mi></msub><annotation encoding="application/x-tex">d_i</annotation></semantics></math>
+contacts, each of whom belongs to subpopulation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
+with probability related to its known prevalence
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>k</mi></msub><annotation encoding="application/x-tex">m_k</annotation></semantics></math>.
+In the Barrier Effects Model that probability varies between respondents
+around
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>k</mi></msub><annotation encoding="application/x-tex">m_k</annotation></semantics></math>
+according to a beta distribution, which makes the counts beta-binomial.
+The spread of that distribution is governed by <code>rho[k]</code> in
+(0, 1): <code>rho[k]</code> close to 0 means no barrier effect (the
+counts are binomial, as in the Random Degree Model below), larger values
+mean stronger barrier effects with respect to subpopulation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>.</p>
+<p>Because the degrees are explicit parameters, no rescaling is needed:
+<code>fit$summary("d")</code> directly gives posterior summaries of the
+degree of every respondent, and <code>exp(mu + sigma^2 / 2)</code> is
+the mean degree in the population.</p>
 <div class="section level3">
 <h3 id="count-responses-2">Count responses<a class="anchor" aria-label="anchor" href="#count-responses-2"></a>
 </h3>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<p>The inputs are <code>N</code>, <code>K</code> and the count matrix
+<code>y</code> as before, together with <code>m</code>, the fractional
+sizes of the subpopulations, and <code>L</code>, the per-respondent
+lower bounds on the degrees. The remaining arguments are the sampling
+settings:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_bem.html">maltiel_bem_count</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -552,17 +812,52 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span><span class="co">#&gt;  d_raw[3]   16.76   16.43 4.42 4.41   10.92   24.48 1.01      128       71</span></span>
 <span><span class="co">#&gt;  d_raw[4]   20.85   19.94 5.53 4.73   12.40   29.15 1.06      200       48</span></span>
 <span><span class="co">#&gt;  d_raw[5]   19.04   18.30 6.79 6.29   10.39   30.65 1.01      200       92</span></span>
-<span><span class="co">#&gt;  d_raw[6]   18.85   18.72 4.89 4.50   12.08   27.95 1.01      174       76</span></span>
+<span><span class="co">#&gt;  d_raw[6]   18.85   18.72 4.89 4.50   12.08   27.95 1.00      174       76</span></span>
 <span><span class="co">#&gt;  d_raw[7]   18.90   18.79 4.92 4.56   12.19   27.28 1.01      128       78</span></span>
 <span><span class="co">#&gt;  d_raw[8]   19.25   18.35 5.37 5.95   11.80   28.67 1.00      186       77</span></span>
 <span><span class="co">#&gt;  d_raw[9]   18.43   17.51 4.75 4.33   13.47   25.59 1.03      120       76</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 106 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
+<p>A quick look at the degree distribution and the barrier effect
+parameters:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mu"</span>, <span class="st">"sigma"</span>, <span class="st">"rho"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 5 × 10</span></span>
+<span><span class="co">#&gt;   variable    mean  median      sd     mad        q5    q95  rhat ess_bulk</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;      &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 mu       3.08    3.06    0.0617  0.0584  3.00      3.19   0.992    20.9 </span></span>
+<span><span class="co">#&gt; 2 sigma    0.291   0.278   0.0445  0.0412  0.250     0.384  1.66      1.79</span></span>
+<span><span class="co">#&gt; 3 rho[1]   0.0184  0.0148  0.0130  0.0122  0.00461   0.0434 1.07     10.5 </span></span>
+<span><span class="co">#&gt; 4 rho[2]   0.00424 0.00167 0.00553 0.00243 0.0000137 0.0161 1.41      2.47</span></span>
+<span><span class="co">#&gt; 5 rho[3]   0.00745 0.00393 0.00813 0.00481 0.000404  0.0221 0.998    15.0 </span></span>
+<span><span class="co">#&gt; # ℹ 1 more variable: ess_tail &lt;dbl&gt;</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"d"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 10</span></span>
+<span><span class="co">#&gt;   variable  mean median    sd   mad    q5   q95  rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 d[1]      25.8   24.6  7.44  6.54  16.8  38.7 1.09      110.     48.4</span></span>
+<span><span class="co">#&gt; 2 d[2]      26.0   25.9  5.32  5.38  17.8  33.8 0.993     200      67.0</span></span>
+<span><span class="co">#&gt; 3 d[3]      18.8   18.4  4.42  4.41  12.9  26.5 1.01      128.     71.3</span></span>
+<span><span class="co">#&gt; 4 d[4]      22.9   21.9  5.53  4.73  14.4  31.2 1.06      200      48.2</span></span>
+<span><span class="co">#&gt; 5 d[5]      21.0   20.3  6.79  6.29  12.4  32.6 1.01      200      92.6</span></span>
+<span><span class="co">#&gt; 6 d[6]      21.8   21.7  4.89  4.50  15.1  31.0 1.00      174.     76.8</span></span></code></pre></div>
+<p>The data were simulated with <code>mu = 3</code>, which is also the
+lower bound of the prior on <code>mu</code>, so the posterior piles up
+against that bound; likewise the true <code>sigma</code> (1/16) is below
+the lower limit of its prior, and <code>rho</code> should be small since
+the data contain no barrier effects.</p>
 </div>
 <div class="section level3">
 <h3 id="dichotomous-responses-2">Dichotomous responses<a class="anchor" aria-label="anchor" href="#dichotomous-responses-2"></a>
 </h3>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<p>The dichotomous version uses the beta-binomial probabilities of
+knowing nobody versus at least one person. It does not constrain the
+degrees from below, so <code>L</code> is not used by the Stan model, but
+the wrapper accepts it for consistency with the count version. The
+inputs are <code>N</code>, <code>K</code>, the 0/1 matrix
+<code>y01</code>, <code>m</code> and <code>L</code>, followed by the
+sampling settings:</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_bem.html">maltiel_bem_dichotomous</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -581,34 +876,39 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span><span class="co">#&gt; See https://mc-stan.org/misc/warnings for details.</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt;  variable    mean  median       sd    mad      q5      q95 rhat ess_bulk</span></span>
-<span><span class="co">#&gt;      lp__ -167.84 -165.86    13.42  15.87 -191.98  -149.33 1.31        2</span></span>
-<span><span class="co">#&gt;      d[1] 2830.54  274.70 11933.26 352.56   23.86  7639.68 1.14        5</span></span>
-<span><span class="co">#&gt;      d[2] 2270.36  251.73  6503.86 322.24   20.32 14474.87 1.07       11</span></span>
-<span><span class="co">#&gt;      d[3]  462.61   31.07  3292.09  40.96    2.57   859.13 1.14        4</span></span>
-<span><span class="co">#&gt;      d[4] 2568.20  236.15  8236.63 261.66   41.97 11966.32 1.15        4</span></span>
-<span><span class="co">#&gt;      d[5] 1209.07  116.25  3312.67 127.45   15.43  7063.54 1.16        4</span></span>
-<span><span class="co">#&gt;      d[6] 1278.34  158.68  3809.70 167.65   18.83  5567.41 1.12        6</span></span>
-<span><span class="co">#&gt;      d[7] 3486.74  122.85 18814.07 132.11   18.65  9013.45 1.13        6</span></span>
-<span><span class="co">#&gt;      d[8] 1907.78  131.54 12245.97 149.84   21.41  3662.41 1.13        5</span></span>
-<span><span class="co">#&gt;      d[9] 2370.85  141.08  6634.09 179.63   13.49 11549.72 1.22        5</span></span>
+<span><span class="co">#&gt;      lp__ -157.50 -155.50    21.44  25.39 -187.77  -120.78 1.84        1</span></span>
+<span><span class="co">#&gt;      d[1] 2389.41  144.58  6436.69 165.79   32.40 10601.21 1.82        1</span></span>
+<span><span class="co">#&gt;      d[2] 2074.20  135.77  4486.31 137.73   27.14 11874.01 1.77        1</span></span>
+<span><span class="co">#&gt;      d[3]  263.37   31.71   784.62  28.39    7.10  1303.60 1.38        2</span></span>
+<span><span class="co">#&gt;      d[4] 2166.86  176.88  8759.35 214.32   23.82  5225.35 1.78        1</span></span>
+<span><span class="co">#&gt;      d[5]  695.97  127.00  1460.25 146.43   20.16  2860.69 1.74        1</span></span>
+<span><span class="co">#&gt;      d[6] 1268.28   82.30  4986.20  87.35   21.76  3608.46 1.76        1</span></span>
+<span><span class="co">#&gt;      d[7] 1186.33  133.84  2845.13 164.42   13.57  6174.97 1.62        1</span></span>
+<span><span class="co">#&gt;      d[8] 1688.52  109.80  7120.70 108.02   17.14  4844.39 1.51        2</span></span>
+<span><span class="co">#&gt;      d[9] 2044.52  113.38 10057.82 127.52   14.18  8392.27 1.61        1</span></span>
 <span><span class="co">#&gt;  ess_tail</span></span>
-<span><span class="co">#&gt;        21</span></span>
-<span><span class="co">#&gt;        50</span></span>
-<span><span class="co">#&gt;       104</span></span>
-<span><span class="co">#&gt;        28</span></span>
-<span><span class="co">#&gt;        20</span></span>
-<span><span class="co">#&gt;        53</span></span>
-<span><span class="co">#&gt;        40</span></span>
-<span><span class="co">#&gt;        52</span></span>
-<span><span class="co">#&gt;        47</span></span>
-<span><span class="co">#&gt;        44</span></span>
+<span><span class="co">#&gt;        32</span></span>
+<span><span class="co">#&gt;        30</span></span>
+<span><span class="co">#&gt;        33</span></span>
+<span><span class="co">#&gt;        48</span></span>
+<span><span class="co">#&gt;        31</span></span>
+<span><span class="co">#&gt;        73</span></span>
+<span><span class="co">#&gt;        32</span></span>
+<span><span class="co">#&gt;        38</span></span>
+<span><span class="co">#&gt;        60</span></span>
+<span><span class="co">#&gt;        60</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 56 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="trichotomous-responses-1">Trichotomous responses<a class="anchor" aria-label="anchor" href="#trichotomous-responses-1"></a>
 </h3>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<p>The trichotomous version distinguishes nobody / one person / two or
+more and, like the dichotomous one, ignores <code>L</code>. The inputs
+are <code>N</code>, <code>K</code>, the 0/1/2 matrix <code>y012</code>,
+<code>m</code> and <code>L</code>, followed by the sampling
+settings:</p>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_bem.html">maltiel_bem_trichotomous</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -624,17 +924,17 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span>  seed <span class="op">=</span> <span class="fl">666</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
-<span><span class="co">#&gt;  variable    mean  median    sd  mad      q5     q95 rhat ess_bulk ess_tail</span></span>
-<span><span class="co">#&gt;      lp__ -174.95 -172.36 11.25 8.13 -198.54 -163.20 1.04       13       30</span></span>
-<span><span class="co">#&gt;      d[1]   32.22   30.38 13.25 7.41   20.71   49.67 0.99       77       53</span></span>
-<span><span class="co">#&gt;      d[2]   26.78   26.31  8.27 8.74   16.25   40.60 0.99       97       65</span></span>
-<span><span class="co">#&gt;      d[3]   23.83   21.45 10.02 7.51   13.03   38.47 1.00      166       78</span></span>
-<span><span class="co">#&gt;      d[4]   30.00   28.92 10.10 8.10   17.66   49.19 0.99       77       47</span></span>
-<span><span class="co">#&gt;      d[5]   24.76   23.21  8.09 7.40   14.23   39.19 1.06      129       64</span></span>
-<span><span class="co">#&gt;      d[6]   26.32   24.61  9.34 7.16   14.53   39.28 1.00      101       16</span></span>
-<span><span class="co">#&gt;      d[7]   24.68   22.55  7.82 6.76   16.05   35.19 1.00      141       76</span></span>
-<span><span class="co">#&gt;      d[8]   30.01   26.29 16.30 9.42   15.57   49.39 1.05       52       32</span></span>
-<span><span class="co">#&gt;      d[9]   25.08   24.67  6.70 6.33   17.00   35.84 1.03       53       73</span></span>
+<span><span class="co">#&gt;  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;      lp__ -185.96 -185.50 10.84 12.22 -201.35 -168.53 1.06       11       30</span></span>
+<span><span class="co">#&gt;      d[1]   36.37   33.13 17.10 14.39   15.78   60.32 1.01      124       48</span></span>
+<span><span class="co">#&gt;      d[2]   27.64   26.23  9.60  8.44   15.83   44.43 1.00      106       53</span></span>
+<span><span class="co">#&gt;      d[3]   23.29   22.66  9.12  9.17    9.66   37.57 1.10      110       56</span></span>
+<span><span class="co">#&gt;      d[4]   32.93   31.24 15.06 10.26   16.38   64.42 1.05      102       42</span></span>
+<span><span class="co">#&gt;      d[5]   26.85   24.01 14.49 10.94   13.04   45.81 1.03      110       15</span></span>
+<span><span class="co">#&gt;      d[6]   25.99   25.73  8.93  8.09   13.37   40.03 1.04       88       59</span></span>
+<span><span class="co">#&gt;      d[7]   27.63   23.89 13.82 13.85   11.35   52.35 1.02      120       24</span></span>
+<span><span class="co">#&gt;      d[8]   33.14   29.48 13.36  9.61   18.42   52.12 1.01      120       78</span></span>
+<span><span class="co">#&gt;      d[9]   27.21   26.44 11.67  9.00   12.90   45.50 1.04       18       66</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 56 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
 </div>
@@ -642,11 +942,25 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <div class="section level2">
 <h2 id="maltiel-et-al-2015-random-degree-model">Maltiel et al (2015) Random Degree Model<a class="anchor" aria-label="anchor" href="#maltiel-et-al-2015-random-degree-model"></a>
 </h2>
-<p>See <code><a href="../reference/maltiel_rdm.html">?maltiel_rdm</a></code>.</p>
+<p>See <code><a href="../reference/maltiel_rdm.html">?maltiel_rdm</a></code>. This is the simplest of the Maltiel et
+al (2015) models: the count
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">y_{ik}</annotation></semantics></math>
+is binomial with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>i</mi></msub><annotation encoding="application/x-tex">d_i</annotation></semantics></math>
+trials and success probability
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>k</mi></msub><annotation encoding="application/x-tex">m_k</annotation></semantics></math>,
+so the only parameters are the degrees <code>d</code> and the lognormal
+hyperparameters <code>mu</code> and <code>sigma</code>. It is also the
+model the example data were simulated from, so the fit should recover
+<code>mu</code> close to 3.</p>
 <div class="section level3">
 <h3 id="count-responses-3">Count responses<a class="anchor" aria-label="anchor" href="#count-responses-3"></a>
 </h3>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<p>The inputs are <code>N</code>, <code>K</code>, the count matrix
+<code>y</code>, the fractional subpopulation sizes <code>m</code> and
+the degree lower bounds <code>L</code>, followed by the sampling
+settings:</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_rdm.html">maltiel_rdm_count</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -665,7 +979,7 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span><span class="co">#&gt;  variable    mean  median   sd  mad      q5     q95 rhat ess_bulk ess_tail</span></span>
 <span><span class="co">#&gt;  lp__     -227.79 -227.65 5.64 4.92 -238.16 -219.42 1.12        9       30</span></span>
 <span><span class="co">#&gt;  d_raw[1]   23.30   23.23 6.08 5.07   14.31   33.76 1.07      120       52</span></span>
-<span><span class="co">#&gt;  d_raw[2]   21.43   20.72 5.62 5.84   13.43   30.78 1.04      158      112</span></span>
+<span><span class="co">#&gt;  d_raw[2]   21.43   20.72 5.62 5.84   13.43   30.78 1.03      158      112</span></span>
 <span><span class="co">#&gt;  d_raw[3]   17.00   16.51 4.65 4.07    9.39   25.29 1.05      200       71</span></span>
 <span><span class="co">#&gt;  d_raw[4]   20.64   20.05 5.18 5.85   13.51   30.04 1.00      200       61</span></span>
 <span><span class="co">#&gt;  d_raw[5]   18.73   18.59 5.46 4.40    9.95   29.78 1.00      200      101</span></span>
@@ -675,11 +989,28 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span><span class="co">#&gt;  d_raw[9]   18.29   17.38 4.71 4.52   11.80   26.78 1.03      200       78</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 103 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
+<p>The summary starts with <code>d_raw</code>, the increments over the
+lower bounds <code>L</code> that the sampler actually works with; the
+degrees <code>d = L + d_raw</code> are further down the list. The
+hyperparameters of the degree distribution:</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mu"</span>, <span class="st">"sigma"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 2 × 10</span></span>
+<span><span class="co">#&gt;   variable  mean median     sd    mad    q5   q95  rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 mu       3.08   3.08  0.0499 0.0403 3.00  3.18   1.07    21.3      21.0</span></span>
+<span><span class="co">#&gt; 2 sigma    0.285  0.276 0.0352 0.0259 0.253 0.332  1.13     7.11     30.6</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="dichotomous-responses-3">Dichotomous responses<a class="anchor" aria-label="anchor" href="#dichotomous-responses-3"></a>
 </h3>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<p>The dichotomous version (note the wrapper name,
+<code><a href="../reference/maltiel_rdm.html">maltiel_rd_dichotomous()</a></code>) uses the binomial probabilities
+of a zero versus a positive count and does not use <code>L</code>. The
+inputs are <code>N</code>, <code>K</code>, the 0/1 matrix
+<code>y01</code>, <code>m</code> and <code>L</code>, followed by the
+sampling settings:</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_rdm.html">maltiel_rd_dichotomous</a></span><span class="op">(</span></span>
 <span>  N <span class="op">=</span> <span class="va">N</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span>,</span>
@@ -700,7 +1031,7 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span><span class="co">#&gt;  variable    mean  median    sd   mad      q5    q95 rhat ess_bulk ess_tail</span></span>
 <span><span class="co">#&gt;      lp__ -104.21 -103.59 12.97 16.88 -125.26 -84.08 1.35        2       17</span></span>
 <span><span class="co">#&gt;      d[1]   31.01   27.75 12.59 12.31   16.71  58.50 1.07       60      112</span></span>
-<span><span class="co">#&gt;      d[2]   33.83   26.62 25.39 11.54   14.11  56.81 1.18        4       21</span></span>
+<span><span class="co">#&gt;      d[2]   33.83   26.62 25.39 11.54   14.11  56.80 1.18        4       21</span></span>
 <span><span class="co">#&gt;      d[3]   17.26   16.97  7.09  6.44    6.13  31.08 1.03       66      112</span></span>
 <span><span class="co">#&gt;      d[4]   33.28   27.24 22.41 11.56   14.12  67.84 1.05       28       25</span></span>
 <span><span class="co">#&gt;      d[5]   23.92   21.93  9.21  5.76   12.41  44.57 0.99      173       68</span></span>
@@ -711,6 +1042,205 @@ variants do not use <code>L</code>, but accept it for consistency).</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  # showing 10 of 53 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
 </div>
+</div>
+<div class="section level2">
+<h2 id="maltiel-et-al-2015-transmission-bias-model">Maltiel et al (2015) Transmission Bias Model<a class="anchor" aria-label="anchor" href="#maltiel-et-al-2015-transmission-bias-model"></a>
+</h2>
+<p>See <code><a href="../reference/maltiel_tbm.html">?maltiel_tbm</a></code>. Respondents may not know that some of
+their contacts belong to a subpopulation – membership in stigmatized or
+private groups is not always “transmitted” across ties. The Transmission
+Bias Model extends the Random Degree Model by replacing the prevalence
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>k</mi></msub><annotation encoding="application/x-tex">m_k</annotation></semantics></math>
+with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>τ</mi><mi>k</mi></msub><msub><mi>m</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">\tau_k m_k</annotation></semantics></math>,
+where <code>tau[k]</code> in (0, 1) is the fraction of the members of
+subpopulation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
+whose membership is visible to their contacts. Each <code>tau[k]</code>
+gets a beta prior with shape parameters <code>eta[k]</code> and
+<code>v[k]</code> supplied by the user. Since the expected counts depend
+on the product
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>i</mi></msub><msub><mi>τ</mi><mi>k</mi></msub><msub><mi>m</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">d_i \tau_k m_k</annotation></semantics></math>,
+the data alone cannot separate a low <code>tau[k]</code> from a small
+<code>m[k]</code>, nor either of them from the degrees: inflating the
+degrees and deflating the biases leaves the fitted counts unchanged.
+These priors are therefore where knowledge about transmission (e.g. from
+other studies) enters the model: <code>eta = 1, v = 1</code> is a
+uniform prior, whereas <code>eta = 9, v = 1</code> encodes a belief that
+about 90% of the members are visible.</p>
+<div class="section level3">
+<h3 id="count-responses-4">Count responses<a class="anchor" aria-label="anchor" href="#count-responses-4"></a>
+</h3>
+<p>The inputs are <code>N</code>, <code>K</code>, the count matrix
+<code>y</code>, the fractional subpopulation sizes <code>m</code> and
+the degree lower bounds <code>L</code> as in the Random Degree Model,
+plus the vectors <code>eta</code> and <code>v</code> of length
+<code>K</code> with the beta prior shape parameters for each
+<code>tau[k]</code> – here uniform priors for all three subpopulations.
+The remaining arguments are the sampling settings:</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_tbm.html">maltiel_tbm_count</a></span><span class="op">(</span></span>
+<span>  N <span class="op">=</span> <span class="va">N</span>,</span>
+<span>  K <span class="op">=</span> <span class="va">K</span>,</span>
+<span>  y <span class="op">=</span> <span class="va">y</span>,</span>
+<span>  m <span class="op">=</span> <span class="va">m</span>,</span>
+<span>  L <span class="op">=</span> <span class="va">L</span>,</span>
+<span>  eta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">K</span><span class="op">)</span>,</span>
+<span>  v <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">K</span><span class="op">)</span>,</span>
+<span>  chains <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  iter_warmup <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  iter_sampling <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  refresh <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  show_messages <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  show_exceptions <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">666</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">fit</span></span>
+<span><span class="co">#&gt;  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;  lp__     -234.24 -234.32  7.34  8.51 -246.02 -222.72 0.99       25       72</span></span>
+<span><span class="co">#&gt;  d_raw[1]   31.04   29.51 11.51 10.73   14.60   47.63 1.05       41       36</span></span>
+<span><span class="co">#&gt;  d_raw[2]   30.73   28.09 12.73 10.90   16.24   56.12 1.00       26       13</span></span>
+<span><span class="co">#&gt;  d_raw[3]   23.41   20.05 11.20  7.10   11.00   44.74 1.00       22       31</span></span>
+<span><span class="co">#&gt;  d_raw[4]   28.13   25.26 10.82  8.34   16.33   53.45 1.02       20       28</span></span>
+<span><span class="co">#&gt;  d_raw[5]   24.59   22.83  9.45  7.56   13.84   43.87 1.00       23       31</span></span>
+<span><span class="co">#&gt;  d_raw[6]   24.61   23.26  8.57  7.05   13.11   39.33 1.01       24       42</span></span>
+<span><span class="co">#&gt;  d_raw[7]   26.19   23.16 11.21  8.28   14.44   46.25 1.00       23       31</span></span>
+<span><span class="co">#&gt;  d_raw[8]   26.77   23.84 12.38  7.02   13.83   49.02 1.00       29       52</span></span>
+<span><span class="co">#&gt;  d_raw[9]   26.10   23.23 12.39  9.34   12.17   51.04 1.00       38       30</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  # showing 10 of 106 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
+<p>The transmission parameters are summarised as usual:</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"tau"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 3 × 10</span></span>
+<span><span class="co">#&gt;   variable  mean median    sd    mad    q5   q95  rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 tau[1]   0.696  0.696 0.158 0.179  0.429 0.941  1.04     24.2     12.8</span></span>
+<span><span class="co">#&gt; 2 tau[2]   0.825  0.876 0.142 0.0904 0.520 0.966  1.02     12.9     12.7</span></span>
+<span><span class="co">#&gt; 3 tau[3]   0.750  0.782 0.174 0.179  0.401 0.966  1.05     11.0     12.9</span></span></code></pre></div>
+<p>Without informative priors <code>tau</code> and the degrees
+<code>d</code> are only weakly separated – a lower visibility of a
+subpopulation can be compensated by larger degrees – so the posterior of
+<code>tau</code> remains wide. The data were simulated with full
+transmission, i.e. <code>tau = 1</code>.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="maltiel-et-al-2015-combined-model">Maltiel et al (2015) Combined Model<a class="anchor" aria-label="anchor" href="#maltiel-et-al-2015-combined-model"></a>
+</h2>
+<p>See <code><a href="../reference/maltiel_cm.html">?maltiel_cm</a></code>. This is the model of section 2.4 of
+<span class="citation">Maltiel et al. (2015)</span>, carrying both the
+barrier effects of the Barrier Effects Model and the transmission bias
+of the Transmission Bias Model:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>∼</mo><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">l</mi></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mi>i</mi></msub><mo>,</mo><msub><mi>τ</mi><mi>k</mi></msub><msub><mi>q</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>d</mi><mi>i</mi></msub><mo>∼</mo><mrow><mi mathvariant="normal">L</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">N</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">l</mi></mrow><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo>,</mo><msup><mi>σ</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>q</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>∼</mo><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">a</mi></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>m</mi><mi>k</mi></msub><mo>,</mo><msub><mi>ρ</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">
+y_{ik} \sim \mathrm{Binomial}(d_i, \tau_k q_{ik}), \qquad
+d_i \sim \mathrm{LogNormal}(\mu, \sigma^2), \qquad
+q_{ik} \sim \mathrm{Beta}(m_k, \rho_k)
+</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">a</mi></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>m</mi><mi>k</mi></msub><mo>,</mo><msub><mi>ρ</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathrm{Beta}(m_k, \rho_k)</annotation></semantics></math>
+is parametrized by its mean
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>k</mi></msub><annotation encoding="application/x-tex">m_k</annotation></semantics></math>
+and overdispersion
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ρ</mi><mi>k</mi></msub><annotation encoding="application/x-tex">\rho_k</annotation></semantics></math>,
+as in the Barrier Effects Model. Multiplying
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">q_{ik}</annotation></semantics></math>
+by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>τ</mi><mi>k</mi></msub><annotation encoding="application/x-tex">\tau_k</annotation></semantics></math>
+breaks the beta-binomial conjugacy that <code><a href="../reference/maltiel_bem.html">maltiel_bem_count()</a></code>
+relies on, so the latent
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">q_{ik}</annotation></semantics></math>
+cannot be integrated out and are sampled instead. The model therefore
+has <code>N * K</code> more parameters than the others and is the
+slowest in the package.</p>
+<div class="section level3">
+<h3 id="count-responses-5">Count responses<a class="anchor" aria-label="anchor" href="#count-responses-5"></a>
+</h3>
+<p>The inputs are those of the Transmission Bias Model – <code>N</code>,
+<code>K</code>, the count matrix <code>y</code>, the fractional
+subpopulation sizes <code>m</code>, the degree lower bounds
+<code>L</code> and the beta prior shapes <code>eta</code> and
+<code>v</code> for the transmission biases – followed by the sampling
+settings. Because the <code>tau</code>/degree confounding described
+above applies here too, and because this model has the barrier effects
+to fit as well, we use an informative <code>Beta(9, 1)</code> prior
+(mean 0.9) rather than the flat one:</p>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/maltiel_cm.html">maltiel_cm_count</a></span><span class="op">(</span></span>
+<span>  N <span class="op">=</span> <span class="va">N</span>,</span>
+<span>  K <span class="op">=</span> <span class="va">K</span>,</span>
+<span>  y <span class="op">=</span> <span class="va">y</span>,</span>
+<span>  m <span class="op">=</span> <span class="va">m</span>,</span>
+<span>  L <span class="op">=</span> <span class="va">L</span>,</span>
+<span>  eta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">9</span>, <span class="va">K</span><span class="op">)</span>,</span>
+<span>  v <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">K</span><span class="op">)</span>,</span>
+<span>  chains <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  iter_warmup <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  iter_sampling <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  refresh <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  show_messages <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  show_exceptions <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">666</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: 1 of 1 chains had an E-BFMI less than 0.3.</span></span>
+<span><span class="co">#&gt; See https://mc-stan.org/misc/warnings for details.</span></span>
+<span><span class="va">fit</span></span>
+<span><span class="co">#&gt;  variable    mean  median    sd   mad      q5     q95 rhat ess_bulk ess_tail</span></span>
+<span><span class="co">#&gt;  lp__     -327.34 -337.89 55.55 73.54 -402.21 -243.36 1.99        1       21</span></span>
+<span><span class="co">#&gt;  d_raw[1]   25.54   24.51  8.25  6.51   15.57   39.52 1.05      138      112</span></span>
+<span><span class="co">#&gt;  d_raw[2]   22.68   22.24  6.50  6.69   13.18   33.38 1.00       96       78</span></span>
+<span><span class="co">#&gt;  d_raw[3]   17.40   16.75  5.85  5.25    9.77   27.30 1.01       66       31</span></span>
+<span><span class="co">#&gt;  d_raw[4]   22.13   21.23  6.59  6.41   13.27   35.20 1.01       95       24</span></span>
+<span><span class="co">#&gt;  d_raw[5]   20.49   19.13  6.48  5.58   12.52   31.65 1.02       69       37</span></span>
+<span><span class="co">#&gt;  d_raw[6]   20.55   19.47  5.28  4.65   12.91   29.07 1.00       96       76</span></span>
+<span><span class="co">#&gt;  d_raw[7]   19.14   18.13  6.56  5.16    9.84   31.39 1.00       98       76</span></span>
+<span><span class="co">#&gt;  d_raw[8]   21.85   20.92  5.72  6.20   14.28   32.38 1.00      140       53</span></span>
+<span><span class="co">#&gt;  d_raw[9]   19.82   18.71  5.49  5.90   13.54   29.75 1.01      115       74</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;  # showing 10 of 259 rows (change via 'max_rows' argument or 'cmdstanr_max_rows' option)</span></span></code></pre></div>
+<p>The summary is dominated by the <code>N * K</code> latent
+<code>q</code> values. The two sets of parameters that describe the
+subpopulations are more informative:</p>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tau"</span>, <span class="st">"rho"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 10</span></span>
+<span><span class="co">#&gt;   variable    mean  median      sd     mad       q5    q95  rhat ess_bulk</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;      &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 tau[1]   0.883   0.907   0.0848  0.0812  0.718    0.982   1.01    68.7 </span></span>
+<span><span class="co">#&gt; 2 tau[2]   0.940   0.952   0.0510  0.0443  0.848    0.998   1.03    21.6 </span></span>
+<span><span class="co">#&gt; 3 tau[3]   0.893   0.906   0.0705  0.0686  0.770    0.984   1.04    35.6 </span></span>
+<span><span class="co">#&gt; 4 rho[1]   0.0192  0.0130  0.0160  0.00949 0.00278  0.0511  1.48     2.18</span></span>
+<span><span class="co">#&gt; 5 rho[2]   0.00769 0.00703 0.00606 0.00653 0.000553 0.0177  1.22     3.37</span></span>
+<span><span class="co">#&gt; 6 rho[3]   0.0141  0.0104  0.0109  0.00874 0.00271  0.0364  1.59     1.86</span></span>
+<span><span class="co">#&gt; # ℹ 1 more variable: ess_tail &lt;dbl&gt;</span></span></code></pre></div>
+<p><code>tau</code> stays close to the prior, as the discussion above
+leads one to expect, and <code>rho</code> measures the barrier effects
+on top of it. With so few iterations and this many parameters the
+sampler has not explored the posterior properly; a real fit of this
+model needs considerably longer runs than the other models in this
+vignette.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="where-to-go-from-here">Where to go from here<a class="anchor" aria-label="anchor" href="#where-to-go-from-here"></a>
+</h2>
+<p>The examples above show the calling syntax and the shape of the
+results. In a real analysis:</p>
+<ul>
+<li>run several chains for many more iterations, check
+<code>rhat</code>, the effective sample sizes and
+<code>$diagnostic_summary()</code> before trusting any summary;</li>
+<li>use <code>$draws()</code> with the <strong>posterior</strong>
+package to compute derived quantities (degrees, subpopulation sizes,
+mean degree) for every draw and summarize them, and packages such as
+<strong>bayesplot</strong> to visualize the posterior;</li>
+<li>save the fitted object with <code>$save_object()</code> because the
+underlying CSV files are temporary.</li>
+</ul>
+<p>The help pages <code><a href="../reference/zheng_bem.html">?zheng_bem</a></code>, <code><a href="../reference/zheng_gp.html">?zheng_gp</a></code>,
+<code><a href="../reference/maltiel_bem.html">?maltiel_bem</a></code>, <code><a href="../reference/maltiel_rdm.html">?maltiel_rdm</a></code>,
+<code><a href="../reference/maltiel_tbm.html">?maltiel_tbm</a></code> and <code><a href="../reference/maltiel_cm.html">?maltiel_cm</a></code> document the
+wrappers and point to the original papers.</p>
 </div>
 <div class="section level2">
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
