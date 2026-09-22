@@ -28,17 +28,43 @@ knitr::opts_chunk$set(
 library(stansum)
 ```
 
+# Introduction
+
+Aggregated Relational Data (ARD) are answers to survey questions of the form
+"How many people do you know who are *X*?", where *X* is a subpopulation such
+as "named Michael", "are medical doctors", or "died in a car accident last
+year". A respondent $i = 1, \dots, N$ answers such a question for each of
+$K$ subpopulations, and the resulting $N \times K$ table of counts $y_{ik}$
+is the input of every model in this package. The main quantities of interest
+are the sizes of the personal networks of the respondents (their *degrees*),
+and -- in the Network Scale-Up Method (NSUM) -- the sizes of subpopulations
+that are hard to count directly. If the sizes of some of the subpopulations
+are known, they anchor the scale of the degrees; a hidden subpopulation can
+then be sized by comparing how many of its members respondents report
+knowing relative to the known ones.
+
 The **stansum** package wraps a collection of precompiled Stan models for
-Aggregated Relational Data (ARD) proposed by @zheng_etal_2006,
-@maltiel_etal_2015 and @baum_marsden_2023. The models are embedded in the
-package using **instantiate** [@r-instantiate] and sampled with **cmdstanr**
-[@r-cmdstanr].
+ARD proposed by @zheng_etal_2006, @maltiel_etal_2015 and
+@baum_marsden_2023. The models are embedded in the package using
+**instantiate** [@r-instantiate] and sampled with **cmdstanr**
+[@r-cmdstanr]. Two model families are covered:
+
+- the overdispersed Poisson models of @zheng_etal_2006, in which degrees
+  and subpopulation prevalences enter through log-linear respondent and
+  subpopulation effects;
+- the models of @maltiel_etal_2015, in which degrees are explicit parameters
+  with a lognormal prior and the counts are binomial or beta-binomial.
+
+Most models come in a *count* version, which uses the answers as they are,
+and in *dichotomous* (knows anyone in the subpopulation or not) and
+*trichotomous* (nobody / one person / two or more) versions proposed by
+@baum_marsden_2023 for surveys that collect coarsened answers.
 
 This vignette fits every model once. The examples are deliberately as
 computationally cheap as possible: they use a small subset of the data and a
-tiny number of MCMC iterations. Their purpose is to show the calling syntax
-and the structure of the fitted objects, **not** to produce meaningful
-estimates.
+tiny number of MCMC iterations. Their purpose is to show the calling syntax,
+the structure of the fitted objects, and give a flavor of how to interpret
+the results -- **not** to produce meaningful estimates.
 
 
 # Listing and loading models
@@ -49,7 +75,12 @@ All models shipped with the package are listed by `list_models()`:
 list_models()
 ```
 
-Use `get_model()` to load one of them as a **cmdstanr** object of R6 class
+The names are the base names of the Stan files. Each model has an R wrapper
+named after it in lowercase, e.g. `zheng_bem_count()` for `ZhengBEM_count`.
+(The `CovMod_*` models and the `bernoulli` test model are also listed; the
+former do not have R wrappers yet.)
+
+Use `get_model()` to load a model as a **cmdstanr** object of R6 class
 "CmdStanModel" without fitting it:
 
 ```{r get-model}
@@ -68,6 +99,12 @@ stan_file <- system.file("bin", "stan", "ZhengBEM_count.stan", package = "stansu
 cat(readLines(stan_file), sep = "\n")
 ```
 
+The source is the definitive description of a model: the `data` block lists
+the inputs the model expects (and the R wrapper has one argument for each of
+them, with the same name), the `parameters` block lists what will show up in
+the posterior summaries, and the `model` block spells out the priors and the
+likelihood.
+
 The remaining sections use the R wrappers which load the model and sample
 from the posterior in one call.
 
@@ -76,17 +113,22 @@ from the posterior in one call.
 
 All examples use the artificial dataset `Fake_maltiel_RD` shipped with the
 package. It was simulated from the Random Degree model of @maltiel_etal_2015
-for 1000 respondents and three subpopulations of sizes 100000, 200000 and
-300000 in a population of 3 million. See `?Fake` for details.
+(see below) for 1000 respondents and three subpopulations of sizes 100000,
+200000 and 300000 in a population of 3 million. The degrees were drawn from a
+lognormal distribution with a median of about 20. In a real survey the
+subpopulations would be chosen so that their sizes are known from a census
+or a register -- these known sizes are what pin down the scale of the
+degree estimates. See `?Fake` for details.
 
 ```{r data}
 data("Fake_maltiel_RD", package = "stansum")
 head(Fake_maltiel_RD)
 ```
 
-To keep the computations cheap we use the first 50 respondents only. The
-models expect ARD as a matrix with respondents in rows and subpopulations in
-columns:
+To keep the computations cheap we use the first 50 respondents only. All
+models take the ARD as an integer matrix `y` with respondents in rows and
+subpopulations in columns, together with its dimensions `N` (number of
+respondents) and `K` (number of subpopulations):
 
 ```{r data-count}
 y <- data.matrix(Fake_maltiel_RD)[1:50, ]
@@ -94,21 +136,29 @@ N <- nrow(y)
 K <- ncol(y)
 ```
 
+The count models skip cells with negative values, so a missing answer can
+be encoded as, say, `-1` rather than `NA` (which Stan does not accept).
+
 Some of the models accept dichotomous (does the respondent know anyone in the
 subpopulation: 0/1) or trichotomous (knows nobody / one person / two or more:
-0/1/2) responses instead of counts [@baum_marsden_2023]. We derive them from
-the counts:
+0/1/2) responses instead of counts [@baum_marsden_2023]. Such data arise
+when the questionnaire only asks "Do you know anyone who...?" or offers a
+small number of answer categories. We derive them from the counts:
 
 ```{r data-dichotomous}
 y01 <- 1L * (y > 0)
 y012 <- pmin(y, 2)
 ```
 
-The Maltiel et al (2015) models additionally need `m` -- the vector of
-subpopulation sizes as fractions of the population size -- and `L` -- a
-per-respondent lower bound on the degree. The count models parametrize the
-degree as `L + d_raw` with `d_raw > 0`, so `L` must be at least the largest
-number of people a respondent reported knowing in any subpopulation:
+The Maltiel et al (2015) models additionally need
+
+- `m` -- a vector of length `K` with the sizes of the subpopulations as
+  fractions of the population size, hence numbers in (0, 1);
+- `L` -- a vector of length `N` with a lower bound on the degree of each
+  respondent. The count models parametrize the degree as `L + d_raw` with
+  `d_raw > 0`, so `L[i]` must be at least the largest number of people
+  respondent `i` reported knowing in any subpopulation. Using exactly that
+  maximum is the natural choice:
 
 ```{r data-maltiel}
 m <- c(1, 2, 3) * 1e5 / 3e6
@@ -121,25 +171,34 @@ L <- apply(y, 1, max)
 Every wrapper passes `...` to the `$sample()` method of the "CmdStanModel"
 object, see `?cmdstanr::``model-method-sample``. All calls below use
 
-- `chains = 1`, `iter_warmup = 100`, `iter_sampling = 100` -- the cheapest
-  settings that still run in a reasonable manner. Real applications require
-  multiple chains and far more iterations.
+- `chains = 1`, `iter_warmup = 100`, `iter_sampling = 100` -- one Markov
+  chain, 100 iterations of warmup (adaptation of the sampler; these draws
+  are discarded) and 100 iterations retained as posterior draws. These are
+  the cheapest settings that still run in a reasonable manner. Real
+  applications require multiple chains (e.g. the **cmdstanr** default of 4,
+  which can be run concurrently with `parallel_chains`) and far more
+  iterations (hundreds to thousands of each kind) so that convergence can be
+  assessed and the posterior summaries are precise.
 - `refresh = 0`, `show_messages = FALSE` and `show_exceptions = FALSE` --
-  suppress progress output and informational messages from Stan.
-- `seed = 666` -- for reproducibility.
+  suppress progress output and informational messages from Stan. Leave them
+  at their defaults when working interactively; the messages are useful.
+- `seed = 666` -- for reproducibility of the random draws.
 
 With so few iterations the posterior summaries come with warnings about
 unreliable effective sample sizes (ESS). They are expected here and are not
 shown in this vignette.
 
 The arguments are spelled out in every call so that each example is
-self-contained.
+self-contained; the text refers to them collectively as "the sampling
+settings".
 
 
 # A test model
 
 `test_model()` wraps a simple Bernoulli model borrowed from the Stan
-documentation. It is useful for checking that the toolchain works:
+documentation. It is useful for checking that the toolchain works. Its
+inputs are `N`, the number of binary observations, and `y`, the vector of
+those observations. The remaining arguments are the sampling settings:
 
 ```{r test-model}
 y_test <- c(1, 1, 1, 1, 0, 0, 0, 0, 0, 0)
@@ -157,12 +216,36 @@ fit <- test_model(
 fit
 ```
 
+Printing a fitted object shows a summary of the posterior. The only model
+parameter is `theta`, the probability of success, and its posterior mean is
+close to the sample proportion of 0.4 (the `lp__` row is the log posterior
+density up to a constant, useful for diagnostics but not a parameter).
+
 
 # Zheng et al (2006) Barrier Effects Model
 
-See `?zheng_bem`.
+See `?zheng_bem`. In this model the count $y_{ik}$ is negative binomial with
+mean $\exp(\alpha_i + \beta_k)$, where
+
+- `alpha[i]` is a respondent effect, the log degree of respondent $i$ up to
+  an additive constant (higher values = more gregarious respondents),
+- `beta[k]` is a subpopulation effect, the log prevalence of subpopulation
+  $k$ up to the same constant,
+- `inv_omega[k]` in (0, 1] is the inverse of the overdispersion of
+  subpopulation $k$: the variance of the counts is $\omega_k$ times the mean,
+  so `inv_omega[k]` close to 1 means Poisson-like counts, while small values
+  mean that some respondents know many more members of subpopulation $k$
+  than their degree alone would suggest -- a *barrier effect* (social
+  structure that concentrates ties to a subpopulation among some people).
+
+The hyperparameters `mu_beta` and `sigma_beta` describe the distribution of
+the subpopulation effects and `sigma_alpha` the spread of the respondent
+effects.
 
 ## Count responses
+
+The inputs are `N` and `K`, the dimensions of the ARD, and `y`, the matrix
+of counts. The remaining arguments are the sampling settings:
 
 ```{r zheng-bem-count}
 fit <- zheng_bem_count(
@@ -180,6 +263,11 @@ fit <- zheng_bem_count(
 fit
 ```
 
+The printed summary is truncated to the first 10 of the
+`r 1 + N + K + K + 3` rows (the `max_rows` argument of the print method
+controls this), so with 50 respondents we only see some of the `alpha`s.
+The `$summary()` method described next gives access to any subset.
+
 ## Structure of the fitted object
 
 All wrappers return an object of R6 class "CmdStanMCMC" from **cmdstanr**.
@@ -191,7 +279,8 @@ class(fit)
 ```
 
 Basic information about the model and the run is available through
-`$metadata()`:
+`$metadata()`, e.g. the model name, the names of all variables in the
+posterior, and the number of sampling iterations:
 
 ```{r fit-structure-metadata}
 fit$metadata()$model_name
@@ -199,12 +288,24 @@ fit$metadata()$stan_variables
 fit$metadata()$iter_sampling
 ```
 
-Posterior summaries for all or selected variables:
+Posterior summaries for all or selected variables are computed by
+`$summary()`. Vector parameters such as `alpha` are expanded to one row
+per element, and asking for `"alpha"` returns all of them:
 
 ```{r fit-structure-summary}
 fit$summary()
 fit$summary(variables = c("mu_beta", "sigma_beta", "sigma_alpha"))
 ```
+
+Each row gives the posterior mean and median, the standard deviation and
+the median absolute deviation, and the 5th and 95th percentiles (a 90%
+credible interval) of a variable. The last three columns are convergence
+diagnostics: `rhat` compares the chains (and parts of chains) with each
+other and should be close to 1 (values above 1.01 are a warning sign), and
+`ess_bulk` and `ess_tail` are the effective numbers of independent draws
+behind the estimate of the center and the tails of the posterior,
+respectively. With 100 draws from one chain these numbers are of course
+tiny; in a real analysis one expects several hundred at least.
 
 The posterior draws themselves are returned by `$draws()` in one of the
 formats supported by the **posterior** package -- by default a
@@ -217,7 +318,15 @@ dim(draws)
 head(fit$draws(format = "df"))
 ```
 
-Sampler diagnostics:
+The data frame format (`format = "df"`) is the most convenient one for
+computing derived quantities: every row is one draw of all parameters, so
+any function of the parameters can be evaluated draw by draw and summarised
+afterwards, which propagates the posterior uncertainty correctly.
+
+Sampler diagnostics -- the number of divergent transitions, the number of
+iterations that hit the maximum tree depth, and the energy-based diagnostic
+E-BFMI -- are returned by `$diagnostic_summary()`. Divergences in particular
+indicate that the sampler struggled and the draws may be biased:
 
 ```{r fit-structure-diagnostics}
 fit$diagnostic_summary()
@@ -229,10 +338,56 @@ and are deleted when the R session ends. Use `fit$save_object()` to save the
 whole fitted object. See `?cmdstanr::CmdStanMCMC` for the complete list of
 methods.
 
+## Interpreting the fit
+
+Because the mean of the counts depends on `alpha[i] + beta[k]` only, the
+model cannot tell how much of that sum is due to the respondent and how much
+to the subpopulation: adding a constant to all `alpha`s and subtracting it
+from all `beta`s leaves the likelihood unchanged. The priors center the
+`alpha`s at zero, which fixes the scale arbitrarily. @zheng_etal_2006 pin it
+down using the known subpopulation sizes: the prevalences `exp(beta[k])` of
+the known subpopulations should add up to their known combined share of the
+population. In our data all three subpopulations are known, so the shift
+`C` is the log of the ratio of the estimated combined share
+`sum(exp(beta))` to the known one `sum(m)`; subtracting it from the `beta`s
+makes them log prevalences and adding it to the `alpha`s makes them log
+degrees, `exp(alpha + C)`:
+
+```{r zheng-bem-degrees}
+beta_hat <- fit$summary("beta")$mean
+alpha_hat <- fit$summary("alpha")$mean
+C <- log(sum(exp(beta_hat))) - log(sum(m))
+degree <- exp(alpha_hat + C)
+summary(degree)
+```
+
+This is a quick point estimate based on posterior means; a proper analysis
+applies the same computation to every draw in `fit$draws(format = "df")` to
+obtain full posterior distributions of the degrees. (The data were simulated
+with a median degree of about 20, so even this toy run gets the order of
+magnitude right.) The overdispersion parameters tell whether there are
+barrier effects with respect to any of the subpopulations:
+
+```{r zheng-bem-inv-omega}
+fit$summary("inv_omega")
+```
+
+The data were simulated without barrier effects, so `inv_omega` should be
+close to 1 for all three subpopulations, but with 100 draws the estimates
+are noisy.
+
 ## Count responses (alternative parametrization)
 
-`zheng_bem_count2()` is the same model with a different parametrization of
-the overdispersion parameters and different priors:
+`zheng_bem_count2()` fits the same likelihood with a different
+parametrization and different priors. The respondent and subpopulation
+effects are sampled as standardized deviations (`alpha_std`, `beta_std`)
+and scaled afterwards, which typically makes the sampler more efficient for
+hierarchical models; the overdispersion is parametrized as `eta[k] =
+omega[k] - 1` with a gamma prior; and the hyperparameters get weakly
+informative normal priors. `alpha`, `beta`, `omega` and `inv_omega` are
+computed as transformed parameters and generated quantities, so the
+summaries are directly comparable with the previous fit. The inputs are the
+same: `N`, `K` and the count matrix `y`, followed by the sampling settings:
 
 ```{r zheng-bem-count2}
 fit <- zheng_bem_count2(
@@ -252,6 +407,14 @@ fit
 
 ## Dichotomous responses
 
+For dichotomous data the model only uses the probabilities, implied by the
+same negative binomial distribution, of reporting nobody versus at least one
+person in each subpopulation. The parameters and their interpretation are
+as for the count model, but only the "knows nobody" versus "knows someone"
+contrast is informative, so the degree scale is estimated much less
+precisely [@baum_marsden_2023]. The inputs are `N`, `K` and the 0/1 matrix
+`y01`, followed by the sampling settings:
+
 ```{r zheng-bem-dichotomous}
 fit <- zheng_bem_dichotomous(
   N = N,
@@ -269,6 +432,11 @@ fit
 ```
 
 ## Trichotomous responses
+
+The trichotomous model additionally distinguishes knowing exactly one person
+from knowing two or more, which recovers some of the information lost when
+dichotomizing. The inputs are `N`, `K` and the 0/1/2 matrix `y012`, followed
+by the sampling settings:
 
 ```{r zheng-bem-trichotomous}
 fit <- zheng_bem_trichotomous(
@@ -289,9 +457,18 @@ fit
 
 # Zheng et al (2006) Group Prevalence Model
 
-See `?zheng_gp`.
+See `?zheng_gp`. This is the Poisson special case of the Barrier Effects
+Model: the counts $y_{ik}$ are Poisson with mean $\exp(\alpha_i + \beta_k)$
+and there are no overdispersion parameters. `alpha`, `beta`, `mu_beta`,
+`sigma_beta` and `sigma_alpha` have the same meaning as before and the
+rescaling of the previous section applies unchanged. Comparing this fit with
+the Barrier Effects Model is one way of judging whether overdispersion
+matters for a given dataset.
 
 ## Count responses
+
+The inputs are `N`, `K` and the count matrix `y`, followed by the sampling
+settings:
 
 ```{r zheng-gp-count}
 fit <- zheng_gp_count(
@@ -310,6 +487,10 @@ fit
 ```
 
 ## Dichotomous responses
+
+The dichotomous version uses the Poisson probability of a zero count versus
+a positive one. The inputs are `N`, `K` and the 0/1 matrix `y01`, followed
+by the sampling settings:
 
 ```{r zheng-gp-dichotomous}
 fit <- zheng_gp_dichotomous(
@@ -330,11 +511,30 @@ fit
 
 # Maltiel et al (2015) Barrier Effects Model
 
-See `?maltiel_bem`. These models need `m` and `L` in addition to the ARD
-(the dichotomous and trichotomous variants do not use `L`, but accept it for
-consistency).
+See `?maltiel_bem`. The models of @maltiel_etal_2015 treat the degrees as
+parameters directly: `d[i]` is the degree of respondent $i$, and the degrees
+follow a lognormal distribution with parameters `mu` and `sigma` (on the log
+scale, with uniform priors on (3, 8) and (1/4, 2), respectively). Given
+the degree, the count $y_{ik}$ is the number of "successes" among $d_i$
+contacts, each of whom belongs to subpopulation $k$ with probability related
+to its known prevalence $m_k$. In the Barrier Effects Model that probability
+varies between respondents around $m_k$ according to a beta distribution,
+which makes the counts beta-binomial. The spread of that distribution is
+governed by `rho[k]` in (0, 1): `rho[k]` close to 0 means no barrier effect
+(the counts are binomial, as in the Random Degree Model below), larger values
+mean stronger barrier effects with respect to subpopulation $k$.
+
+Because the degrees are explicit parameters, no rescaling is needed:
+`fit$summary("d")` directly gives posterior summaries of the degree of every
+respondent, and `exp(mu + sigma^2 / 2)` is the mean degree in the
+population.
 
 ## Count responses
+
+The inputs are `N`, `K` and the count matrix `y` as before, together with
+`m`, the fractional sizes of the subpopulations, and `L`, the per-respondent
+lower bounds on the degrees. The remaining arguments are the sampling
+settings:
 
 ```{r maltiel-bem-count}
 fit <- maltiel_bem_count(
@@ -354,7 +554,25 @@ fit <- maltiel_bem_count(
 fit
 ```
 
+A quick look at the degree distribution and the barrier effect parameters:
+
+```{r maltiel-bem-count-degrees}
+fit$summary(variables = c("mu", "sigma", "rho"))
+head(fit$summary("d"))
+```
+
+The data were simulated with `mu = 3`, which is also the lower bound of the
+prior on `mu`, so the posterior piles up against that bound; likewise the
+true `sigma` (1/16) is below the lower limit of its prior, and `rho` should
+be small since the data contain no barrier effects.
+
 ## Dichotomous responses
+
+The dichotomous version uses the beta-binomial probabilities of knowing
+nobody versus at least one person. It does not constrain the degrees from
+below, so `L` is not used by the Stan model, but the wrapper accepts it for
+consistency with the count version. The inputs are `N`, `K`, the 0/1 matrix
+`y01`, `m` and `L`, followed by the sampling settings:
 
 ```{r maltiel-bem-dichotomous}
 fit <- maltiel_bem_dichotomous(
@@ -375,6 +593,10 @@ fit
 ```
 
 ## Trichotomous responses
+
+The trichotomous version distinguishes nobody / one person / two or more and,
+like the dichotomous one, ignores `L`. The inputs are `N`, `K`, the 0/1/2
+matrix `y012`, `m` and `L`, followed by the sampling settings:
 
 ```{r maltiel-bem-trichotomous}
 fit <- maltiel_bem_trichotomous(
@@ -397,9 +619,17 @@ fit
 
 # Maltiel et al (2015) Random Degree Model
 
-See `?maltiel_rdm`.
+See `?maltiel_rdm`. This is the simplest of the Maltiel et al (2015) models:
+the count $y_{ik}$ is binomial with $d_i$ trials and success probability
+$m_k$, so the only parameters are the degrees `d` and the lognormal
+hyperparameters `mu` and `sigma`. It is also the model the example data were
+simulated from, so the fit should recover `mu` close to 3.
 
 ## Count responses
+
+The inputs are `N`, `K`, the count matrix `y`, the fractional subpopulation
+sizes `m` and the degree lower bounds `L`, followed by the sampling
+settings:
 
 ```{r maltiel-rdm-count}
 fit <- maltiel_rdm_count(
@@ -419,7 +649,20 @@ fit <- maltiel_rdm_count(
 fit
 ```
 
+The summary starts with `d_raw`, the increments over the lower bounds `L`
+that the sampler actually works with; the degrees `d = L + d_raw` are
+further down the list. The hyperparameters of the degree distribution:
+
+```{r maltiel-rdm-count-mu}
+fit$summary(variables = c("mu", "sigma"))
+```
+
 ## Dichotomous responses
+
+The dichotomous version (note the wrapper name, `maltiel_rd_dichotomous()`)
+uses the binomial probabilities of a zero versus a positive count and does
+not use `L`. The inputs are `N`, `K`, the 0/1 matrix `y01`, `m` and `L`,
+followed by the sampling settings:
 
 ```{r maltiel-rd-dichotomous}
 fit <- maltiel_rd_dichotomous(
@@ -438,6 +681,79 @@ fit <- maltiel_rd_dichotomous(
 )
 fit
 ```
+
+
+# Maltiel et al (2015) Transmission Bias Model
+
+See `?maltiel_tbm`. Respondents may not know that some of their contacts
+belong to a subpopulation -- membership in stigmatized or private groups is
+not always "transmitted" across ties. The Transmission Bias Model extends
+the Random Degree Model by replacing the prevalence $m_k$ with
+$\tau_k m_k$, where `tau[k]` in (0, 1) is the fraction of the members of
+subpopulation $k$ whose membership is visible to their contacts. Each
+`tau[k]` gets a beta prior with shape parameters `eta[k]` and `v[k]`
+supplied by the user. Since the data alone cannot separate a low `tau[k]`
+from a small `m[k]`, these priors are where knowledge about transmission
+(e.g. from other studies) enters the model: `eta = 1, v = 1` is a uniform
+prior, whereas `eta = 9, v = 1` encodes a belief that about 90% of the
+members are visible.
+
+## Count responses
+
+The inputs are `N`, `K`, the count matrix `y`, the fractional subpopulation
+sizes `m` and the degree lower bounds `L` as in the Random Degree Model, plus
+the vectors `eta` and `v` of length `K` with the beta prior shape parameters
+for each `tau[k]` -- here uniform priors for all three subpopulations. The
+remaining arguments are the sampling settings:
+
+```{r maltiel-tbm-count}
+fit <- maltiel_tbm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  eta = rep(1, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+The transmission parameters are summarised as usual:
+
+```{r maltiel-tbm-tau}
+fit$summary("tau")
+```
+
+Without informative priors `tau` and the degrees `d` are only weakly
+separated -- a lower visibility of a subpopulation can be compensated by
+larger degrees -- so the posterior of `tau` remains wide. The data were
+simulated with full transmission, i.e. `tau = 1`.
+
+
+# Where to go from here
+
+The examples above show the calling syntax and the shape of the results. In
+a real analysis:
+
+- run several chains for many more iterations, check `rhat`, the effective
+  sample sizes and `$diagnostic_summary()` before trusting any summary;
+- use `$draws()` with the **posterior** package to compute derived
+  quantities (degrees, subpopulation sizes, mean degree) for every draw and
+  summarize them, and packages such as **bayesplot** to visualize the
+  posterior;
+- save the fitted object with `$save_object()` because the underlying CSV
+  files are temporary.
+
+The help pages `?zheng_bem`, `?zheng_gp`, `?maltiel_bem`, `?maltiel_rdm` and
+`?maltiel_tbm` document the wrappers and point to the original papers.
 
 
 # References
