@@ -1,20 +1,14 @@
-# Maltiel et al (2015) Random Degree Model
+# Maltiel et al Transmission Bias Model
 
-Bayesian model for ARD with random degree parameters.
+Bayesian model for ARD with transmission bias parameters.
 
-- `maltiel_rdm_count` – model for count responses
-
-&nbsp;
-
-- `maltiel_rdm_dichotomous` – model for dichotmous responses proposed by
-  Baum & Marsden (2023).
+- `maltiel_tbm_count` – transmission bias model for count responses. All
+  `tau_k` are estimated from the data.
 
 ## Usage
 
 ``` r
-maltiel_rdm_count(N, K, y, m, L, ...)
-
-maltiel_rd_dichotomous(N, K, y, m, L, ...)
+maltiel_tbm_count(N, K, y, m, L, eta, v, ...)
 ```
 
 ## Arguments
@@ -29,15 +23,27 @@ maltiel_rd_dichotomous(N, K, y, m, L, ...)
 
 - y:
 
-  integer matrix; ARD
+  numeric matrix; ARD counts (N x K)
 
 - m:
 
-  numeric; vector of fractional sizes of sub-populations
+  numeric vector; fractional sub-population sizes (length K)
 
 - L:
 
-  numeric; lower bound on degree
+  numeric vector; lower bounds on individual degrees (length N). Must
+  satisfy `L[i] >= max(y[i,])` for each respondent `i` so that the
+  degree is always at least as large as the maximum observed count.
+
+- eta:
+
+  numeric vector; Beta prior shape 1 for each transmission bias (length
+  K)
+
+- v:
+
+  numeric vector; Beta prior shape 2 for each transmission bias (length
+  K)
 
 - ...:
 
@@ -60,10 +66,6 @@ method.
 
 ## References
 
-Baum, D. S., & Marsden, P. V. (2023). Uses and limitations of
-dichotomous aggregate relational data. *Social Networks*, 74, 42–61.
-[doi:10.1016/j.socnet.2023.02.001](https://doi.org/10.1016/j.socnet.2023.02.001)
-
 Maltiel, R., Raftery, A. E., McCormick, T. H., & Baraff, A. J. (2015).
 Estimating Population Size Using the Network Scale Up Method. *The
 Annals of Applied Statistics*, 9(3), 1247–1277.
@@ -79,11 +81,38 @@ without fitting it.
 
 Other models in this package:
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
-[`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md),
+[`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md),
 [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md),
 [`zheng_bem`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md),
 [`zheng_gp`](https://coalesce-lab.github.io/stansum/reference/zheng_gp.md)
 
 Other models of Maltiel et al (2015):
 [`maltiel_bem`](https://coalesce-lab.github.io/stansum/reference/maltiel_bem.md),
-[`maltiel_tbm`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md)
+[`maltiel_rdm`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md)
+
+## Examples
+
+``` r
+data("Fake_maltiel_RD", package = "stansum")
+K <- ncol(Fake_maltiel_RD)
+r <- maltiel_tbm_count(
+  N = nrow(Fake_maltiel_RD),
+  K = K,
+  y = data.matrix(Fake_maltiel_RD),
+  m = rep(0.01, K),
+  L = apply(data.matrix(Fake_maltiel_RD), 1, max),
+  eta = rep(1, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 200,
+  iter_sampling = 10
+)
+#> Running MCMC with 1 chain...
+#> 
+#> Chain 1 Iteration:   1 / 210 [  0%]  (Warmup) 
+#> Chain 1 Iteration: 100 / 210 [ 47%]  (Warmup) 
+#> Chain 1 Iteration: 200 / 210 [ 95%]  (Warmup) 
+#> Chain 1 Iteration: 201 / 210 [ 95%]  (Sampling) 
+#> Chain 1 Iteration: 210 / 210 [100%]  (Sampling) 
+#> Chain 1 finished in 9.3 seconds.
+```

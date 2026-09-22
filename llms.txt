@@ -78,6 +78,8 @@ Statistical Association* 101 (474): 409–23.
 - [`maltiel_rdm_count()`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md)
   [`maltiel_rd_dichotomous()`](https://coalesce-lab.github.io/stansum/reference/maltiel_rdm.md)
   : Maltiel et al (2015) Random Degree Model
+- [`maltiel_tbm_count()`](https://coalesce-lab.github.io/stansum/reference/maltiel_tbm.md)
+  : Maltiel et al Transmission Bias Model
 - [`test_model()`](https://coalesce-lab.github.io/stansum/reference/test_model.md)
   : A simple Bernoulli model for testing purposes
 - [`zheng_bem_count()`](https://coalesce-lab.github.io/stansum/reference/zheng_bem.md)
