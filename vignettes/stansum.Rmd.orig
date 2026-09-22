@@ -440,4 +440,94 @@ fit
 ```
 
 
+# Maltiel et al (2015) Transmission Bias Model
+
+See `?maltiel_tbm`. In addition to `m` and `L` this model needs `eta` and `v`
+-- the shapes of the Beta prior on the transmission biases `tau_k`, one pair
+per subpopulation. The transmission bias is the probability that a respondent
+is aware of an alter's membership in subpopulation `k`, so `tau_k * m_k`
+replaces `m_k` in the reporting probability.
+
+`tau` and the degrees are only weakly identified from ARD alone: the expected
+counts depend on the product `d_i * tau_k`, so inflating the degrees and
+deflating the biases leaves them unchanged. The prior on `tau` is what
+resolves this. The flat `Beta(1, 1)` used here is the least informative
+choice and consequently lets the degrees drift upwards; in an application
+`eta` and `v` should encode what is actually known about awareness in each
+subpopulation.
+
+```{r data-tbm}
+eta <- rep(1, K)
+v <- rep(1, K)
+```
+
+## Count responses
+
+```{r maltiel-tbm-count}
+fit <- maltiel_tbm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  eta = eta,
+  v = v,
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
+# Maltiel et al (2015) Combined Model
+
+See `?maltiel_cm`. This is the model of section 2.4 of @maltiel_etal_2015,
+carrying both the barrier effects of `maltiel_bem_count()` and the
+transmission bias of `maltiel_tbm_count()`:
+
+$$
+y_{ik} \sim \mathrm{Binomial}(d_i, \tau_k q_{ik}), \qquad
+d_i \sim \mathrm{LogNormal}(\mu, \sigma^2), \qquad
+q_{ik} \sim \mathrm{Beta}(m_k, \rho_k)
+$$
+
+where $\mathrm{Beta}(m_k, \rho_k)$ is parametrized by its mean $m_k$ and
+overdispersion $\rho_k$. Multiplying $q_{ik}$ by $\tau_k$ breaks the
+Beta-Binomial conjugacy that `maltiel_bem_count()` relies on, so the latent
+$q_{ik}$ cannot be integrated out and are sampled instead. The model
+therefore has `N * K` more parameters than the others and is the slowest in
+the package.
+
+It takes the same arguments as the transmission bias model. Because the
+`tau`/degree confounding described above applies here too, we use an
+informative `Beta(9, 1)` prior (mean 0.9) rather than the flat one:
+
+## Count responses
+
+```{r maltiel-cm-count}
+fit <- maltiel_cm_count(
+  N = N,
+  K = K,
+  y = y,
+  m = m,
+  L = L,
+  eta = rep(9, K),
+  v = rep(1, K),
+  chains = 1,
+  iter_warmup = 100,
+  iter_sampling = 100,
+  refresh = 0,
+  show_messages = FALSE,
+  show_exceptions = FALSE,
+  seed = 666
+)
+fit
+```
+
+
 # References
