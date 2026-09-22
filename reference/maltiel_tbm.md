@@ -116,5 +116,5 @@ r <- maltiel_tbm_count(
 #> Chain 1 Iteration: 200 / 210 [ 95%]  (Warmup) 
 #> Chain 1 Iteration: 201 / 210 [ 95%]  (Sampling) 
 #> Chain 1 Iteration: 210 / 210 [100%]  (Sampling) 
-#> Chain 1 finished in 7.9 seconds.
+#> Chain 1 finished in 9.8 seconds.
 ```
